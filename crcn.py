@@ -14,7 +14,7 @@ intents.members = True  # REQUIRED for welcome event
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-WELCOME_CHANNEL_ID = 1503899046941818941  # <-- CHANGE THIS
+WELCOME_CHANNEL_ID = 1510849019838988409  # <-- CHANGE THIS
 
 
 # ---------------- READY EVENT ----------------
