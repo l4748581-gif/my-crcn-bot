@@ -104,10 +104,14 @@ async def on_member_join(member):
         embed=embed
     )
 
-```python
 @bot.command(name="soon")
 @commands.has_permissions(administrator=True)
 async def soon(ctx):
+
+    try:
+        await ctx.message.delete()
+    except:
+        pass
 
     embed = discord.Embed(
         color=0xD4FF82
@@ -122,10 +126,16 @@ async def soon(ctx):
 
 @soon.error
 async def soon_error(ctx, error):
-    if isinstance(error, commands.MissingPermissions):
-        await ctx.author.send("❌ No permission.")
-```
 
+    if isinstance(error, commands.MissingPermissions):
+
+        try:
+            await ctx.message.delete()
+        except:
+            pass
+
+        msg = await ctx.send("❌ No permission.")
+        await msg.delete(delay=5)
 
 # ---------------- RUN BOT ----------------
 bot.run(TOKEN)
