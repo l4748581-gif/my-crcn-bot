@@ -12,7 +12,7 @@ intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True  # REQUIRED for welcome event
 
-bot = commands.Bot(command_prefix="!", intents=intents)
+bot = commands.Bot(command_prefix="?", intents=intents)
 
 WELCOME_CHANNEL_ID = 1510849019838988409  # <-- CHANGE THIS
 
@@ -103,6 +103,29 @@ async def on_member_join(member):
         content=f"{member.mention}",
         embed=embed
     )
-    
+
+```python
+@bot.command(name="soon")
+@commands.has_permissions(administrator=True)
+async def soon(ctx):
+
+    embed = discord.Embed(
+        color=0xD4FF82
+    )
+
+    embed.set_image(
+        url="https://cdn.discordapp.com/attachments/1507921885436969091/1510973193433780234/Server_1.png?ex=6a1ec2f1&is=6a1d7171&hm=1dd30edec008b1ffbf3e2139de86f3baff25b66a85a24f3c8d6d1cc88a5d1b08"
+    )
+
+    await ctx.send(embed=embed)
+
+
+@soon.error
+async def soon_error(ctx, error):
+    if isinstance(error, commands.MissingPermissions):
+        await ctx.author.send("❌ No permission.")
+```
+
+
 # ---------------- RUN BOT ----------------
 bot.run(TOKEN)
