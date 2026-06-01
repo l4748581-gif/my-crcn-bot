@@ -1,1 +1,1 @@
-worker: python affiliation.py
+worker: python crcn.py
