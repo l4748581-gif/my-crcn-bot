@@ -137,5 +137,38 @@ async def soon_error(ctx, error):
         msg = await ctx.send("❌ No permission.")
         await msg.delete(delay=5)
 
+@bot.command(name="pdsoon")
+@commands.has_permissions(administrator=True)
+async def soon(ctx):
+
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+
+    embed = discord.Embed(
+        color=0xD4FF82
+    )
+
+    embed.set_image(
+        url="https://cdn.discordapp.com/attachments/1507980572889186394/1510978702496763954/Server_2.png?ex=6a1ec813&is=6a1d7693&hm=52684d06d5f28343a46423882666807600240d1804a800d185b9ddde8845ebf6"
+    )
+
+    await ctx.send(embed=embed)
+
+
+@soon.error
+async def soon_error(ctx, error):
+
+    if isinstance(error, commands.MissingPermissions):
+
+        try:
+            await ctx.message.delete()
+        except:
+            pass
+
+        msg = await ctx.send("❌ No permission.")
+        await msg.delete(delay=5)
+
 # ---------------- RUN BOT ----------------
 bot.run(TOKEN)
