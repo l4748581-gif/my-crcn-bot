@@ -159,8 +159,15 @@ async def pdsoon_error(ctx, error):
 
 # ---------------- STARTUP COMMAND ----------------
 @bot.tree.command(name="startup", description="Start a roleplay session.")
-@app_commands.describe(reactions="Reactions required before setup starts.")
-async def startup(interaction: discord.Interaction, reactions: int):
+@app_commands.describe(
+    reactions="Reactions required before setup starts.",
+    image="Optional image for the startup embed."
+)
+async def startup(
+    interaction: discord.Interaction,
+    reactions: int,
+    image: discord.Attachment = None
+):
 
     role_id = 1503604680121647214
 
@@ -178,7 +185,7 @@ async def startup(interaction: discord.Interaction, reactions: int):
     embed = discord.Embed(
         title="<a:beatinghearts:1510771374359318639> Cees Rensselaer County Nation — Roleplay Startup!",
         description=(
-            f"{interaction.user.mention} is hosting a Roleplay Session!\n\n"
+            f"{interaction.user.mention} is hosting a Roleplay Session!"
             "Prior to joining the session, please ensure your account has its privacy settings set to **Everyone**. "
             "Upon joining, you agree that you have read all of the server regulations. "
             "When the session is released, the host will send a release notification.\n\n"
@@ -187,6 +194,8 @@ async def startup(interaction: discord.Interaction, reactions: int):
         ),
         color=0xD4FF82
     )
+
+    embed.set_image(url="https://cdn.discordapp.com/attachments/1502420648327118978/1510966611463639080/Screenshot_2026-05-07_160747.png?ex=6a1f6590&is=6a1e1410&hm=7dfb1b6a698b16392567991dc1b58a5c4a1e1b70da7e16da67a780b074d3fc83&")
 
     embed.set_footer(
         text="🌿Cees Rensselaer County Nation",
@@ -208,7 +217,6 @@ async def startup(interaction: discord.Interaction, reactions: int):
     })
 
     await interaction.response.send_message("✅ Startup created.", ephemeral=True)
-
 # ---------------- REACTION HANDLER ----------------
 @bot.event
 async def on_raw_reaction_add(payload):
