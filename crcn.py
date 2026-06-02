@@ -189,7 +189,7 @@ async def startup(
             "Prior to joining the session, please ensure your account has its privacy settings set to **Everyone**. "
             "Upon joining, you agree that you have read all of the server regulations. "
             "When the session is released, the host will send a release notification.\n\n"
-            f"> :arrow: In order for the host to begin setting up and the roleplay to commence, "
+            f"<:arrow:1510771293035827231> In order for the host to begin setting up and the roleplay to commence, "
             f"we must receive **{reactions} reactions**. Once that requirement is reached, the host will release Early Access."
         ),
         color=0xD4FF82
@@ -247,8 +247,8 @@ async def on_raw_reaction_add(payload):
                 embed = discord.Embed(
                     title="<a:blue_candy_recolor:1510771397771792394> Nation — Roleplay Setup <a:blue_candy_recolor:1510771397771792394>",
                     description=(
-                        f"{host.mention} is now setting up their roleplay session.\n\n"
-                        "Please wait, setup in progress."
+                        f"{host.mention} is now setting up their roleplay session.\n"
+                        "> During this time, please do not bother the host, as they are setting up their Roleplay Session. Stay patient, typical release time is 10 minutes from now."
                     ),
                     color=0xD4FF82
                 )
