@@ -302,18 +302,18 @@ class SessionLinkView(discord.ui.View):
 @bot.tree.command(name="release", description="Release a roleplay session.")
 @app_commands.describe(
     link="Session join link",
-    FRP_input="Fail Roleplay Speed",
-    PT_input="Peacetime Status",
-    LEO_input="LEO Status",
-    HC_input="House Claiming"
+    frp_input="Fail Roleplay Speed",
+    pt_input="Peacetime Status",
+    leo_input="LEO Status",
+    hc_input="House Claiming"
 )
 async def release(
     interaction: discord.Interaction,
     link: str,
-    FRP_input: str,
-    PT_input: str,
-    LEO_input: str,
-    HC_input: str
+    frp_input: str,
+    pt_input: str,
+    leo_input: str,
+    hc_input: str
 ):
 
     role_id = 1503604680121647214
