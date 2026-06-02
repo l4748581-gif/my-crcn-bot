@@ -190,7 +190,7 @@ async def startup(
             "Upon joining, you agree that you have read all of the server regulations. "
             "When the session is released, the host will send a release notification.\n\n"
             f"<:arrow:1510771293035827231> In order for the host to begin setting up and the roleplay to commence, "
-            f"we must receive **{reactions} reactions**. Once that requirement is reached, the host will release Early Access."
+            f"we must receive **{reactions}+ reactions**. Once that requirement is reached, the host will release Early Access."
         ),
         color=0xD4FF82
     )
