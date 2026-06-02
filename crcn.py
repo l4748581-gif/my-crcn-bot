@@ -159,8 +159,8 @@ async def pdsoon_error(ctx, error):
 
 # ---------------- STARTUP COMMAND ----------------
 @bot.tree.command(name="startup", description="Start a roleplay session.")
-@app_commands.describe(input="Reactions required before setup starts.")
-async def startup(interaction: discord.Interaction, input: int):
+@app_commands.describe(reactions="Reactions required before setup starts.")
+async def startup(interaction: discord.Interaction, reactions: int):
 
     role_id = 1503604680121647214
 
@@ -179,9 +179,11 @@ async def startup(interaction: discord.Interaction, input: int):
         title="<a:beatinghearts:1510771374359318639> Cees Rensselaer County Nation — Roleplay Startup!",
         description=(
             f"{interaction.user.mention} is hosting a Roleplay Session!\n\n"
-            f" Prior to joining the session, please ensure your account has its privacy settings set to **"Everyone".** Upon joining, you agree that you have read our all of the server regulations. When the session is released, the host will send a release notification.\n
-
-> :arrow: In order for the host to begin setting up and the roleplay to commence, we must receive **{input} reactions. Once that requirement is reached, the host will release Early Access."
+            "Prior to joining the session, please ensure your account has its privacy settings set to **Everyone**. "
+            "Upon joining, you agree that you have read all of the server regulations. "
+            "When the session is released, the host will send a release notification.\n\n"
+            f"> :arrow: In order for the host to begin setting up and the roleplay to commence, "
+            f"we must receive **{reactions} reactions**. Once that requirement is reached, the host will release Early Access."
         ),
         color=0xD4FF82
     )
@@ -201,12 +203,11 @@ async def startup(interaction: discord.Interaction, input: int):
     active_startups.append({
         "host_id": interaction.user.id,
         "message_id": msg.id,
-        "required": input,
+        "required": reactions,
         "state": "startup"
     })
 
     await interaction.response.send_message("✅ Startup created.", ephemeral=True)
-
 
 # ---------------- REACTION HANDLER ----------------
 @bot.event
