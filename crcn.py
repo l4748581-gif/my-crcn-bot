@@ -16,6 +16,7 @@ intents.members = True  # REQUIRED for welcome event
 bot = commands.Bot(command_prefix="?", intents=intents)
 
 WELCOME_CHANNEL_ID = 1510849019838988409
+ROLE_LOCK_ID = 1502773113408983271
 
 # ---------------- STARTUP STORAGE ----------------
 active_startups = []
@@ -67,7 +68,7 @@ async def on_member_join(member):
     if channel is None:
         return
 
-    role1 = member.guild.get_role(1503604680121647214)
+    role1 = member.guild.get_role(ROLE_LOCK_ID)
     if role1:
         await member.add_roles(role1)
 
@@ -163,13 +164,9 @@ async def pdsoon_error(ctx, error):
     reactions="Reactions required before setup starts.",
     image="Optional image for the startup embed."
 )
-async def startup(
-    interaction: discord.Interaction,
-    reactions: int,
-    image: discord.Attachment = None
-):
+async def startup(interaction: discord.Interaction, reactions: int, image: discord.Attachment = None):
 
-    role_id = 1503604680121647214
+    role_id = ROLE_LOCK_ID
 
     if not any(r.id == role_id for r in interaction.user.roles):
         await interaction.response.send_message("❌ No permission.", ephemeral=True)
@@ -184,26 +181,13 @@ async def startup(
 
     embed = discord.Embed(
         title="<a:beatinghearts:1510771374359318639> Cees Rensselaer County Nation — Roleplay Startup!",
-        description=(
-            f"{interaction.user.mention} is hosting a Roleplay Session!"
-            "Prior to joining the session, please ensure your account has its privacy settings set to **Everyone**. "
-            "Upon joining, you agree that you have read all of the server regulations. "
-            "When the session is released, the host will send a release notification.\n\n"
-            f"<:arrow:1510771293035827231> In order for the host to begin setting up and the roleplay to commence, "
-            f"we must receive **{reactions}+ reactions**. Once that requirement is reached, the host will release Early Access."
-        ),
         color=0xD4FF82
     )
 
-    embed.set_image(url="https://cdn.discordapp.com/attachments/1502420648327118978/1510966611463639080/Screenshot_2026-05-07_160747.png?ex=6a1f6590&is=6a1e1410&hm=7dfb1b6a698b16392567991dc1b58a5c4a1e1b70da7e16da67a780b074d3fc83&")
-
-    embed.set_footer(
-        text="🌿Cees Rensselaer County Nation",
-        icon_url="https://cdn.discordapp.com/icons/1497481852678832158/974ce73407bb790c1348a61f00093218.webp"
-    )
+    embed.set_image(url="https://cdn.discordapp.com/attachments/1502420648327118978/1510966611463639080/Screenshot_2026-05-07_160747.png")
 
     msg = await interaction.channel.send(
-        content="<@&1503604680121647214>",
+        content=f"<@&{ROLE_LOCK_ID}>",
         embed=embed
     )
 
@@ -217,52 +201,8 @@ async def startup(
     })
 
     await interaction.response.send_message("✅ Startup created.", ephemeral=True)
-# ---------------- REACTION HANDLER ----------------
-@bot.event
-async def on_raw_reaction_add(payload):
 
-    if payload.user_id == bot.user.id:
-        return
 
-    if str(payload.emoji.id) != "1510771397771792394":
-        return
-
-    for s in active_startups:
-
-        if s["message_id"] == payload.message_id:
-
-            guild = bot.get_guild(payload.guild_id)
-            channel = guild.get_channel(payload.channel_id)
-            message = await channel.fetch_message(payload.message_id)
-
-            reaction = discord.utils.get(message.reactions, emoji=payload.emoji)
-            count = reaction.count - 1
-
-            if count >= s["required"] and s["state"] == "startup":
-
-                s["state"] = "setup"
-
-                host = guild.get_member(s["host_id"])
-
-                embed = discord.Embed(
-                    title="<a:blue_candy_recolor:1510771397771792394> Nation — Roleplay Setup <a:blue_candy_recolor:1510771397771792394>",
-                    description=(
-                        f"{host.mention} is now setting up their roleplay session.\n"
-                        "> During this time, please do not bother the host, as they are setting up their Roleplay Session. Stay patient, typical release time is 10 minutes from now."
-                    ),
-                    color=0xD4FF82
-                )
-
-                embed.set_footer(
-                    text="🌿Cees Rensselaer County Nation",
-                    icon_url="https://cdn.discordapp.com/icons/1497481852678832158/974ce73407bb790c1348a61f00093218.webp"
-                )
-
-                await channel.send(embed=embed)
-
-            break
-
-# ---------------- RELEASE VIEW ----------------
 class SessionLinkView(discord.ui.View):
     def __init__(self, startup_message, release_link):
         super().__init__(timeout=None)
@@ -272,22 +212,17 @@ class SessionLinkView(discord.ui.View):
     @discord.ui.button(label="Session Link", style=discord.ButtonStyle.secondary)
     async def session_button(self, interaction: discord.Interaction, button: discord.ui.Button):
 
-        guild = interaction.guild
-        user = interaction.user
-
-        # get reaction list
         reacted = False
 
         for reaction in self.startup_message.reactions:
             users = [u async for u in reaction.users()]
-            if user in users:
+            if interaction.user in users:
                 reacted = True
                 break
 
         if not reacted:
             await interaction.response.send_message(
-                f"You have not reacted to the startup message. "
-                f"[React here.]({self.startup_message.jump_url})",
+                f"You have not reacted to the startup message. [React here.]({self.startup_message.jump_url})",
                 ephemeral=True
             )
             return
@@ -298,7 +233,6 @@ class SessionLinkView(discord.ui.View):
         )
 
 
-# ---------------- RELEASE COMMAND ----------------
 @bot.tree.command(name="release", description="Release a roleplay session.")
 @app_commands.describe(
     link="Session join link",
@@ -316,50 +250,11 @@ async def release(
     hc_input: str
 ):
 
-    role_id = 1503604680121647214
+    role_id = ROLE_LOCK_ID
 
     if not any(r.id == role_id for r in interaction.user.roles):
         await interaction.response.send_message("❌ No permission.", ephemeral=True)
         return
-
-    # find latest startup by host
-    startup = None
-    for s in active_startups:
-        if s["host_id"] == interaction.user.id:
-            startup = s
-            break
-
-    if not startup:
-        await interaction.response.send_message("❌ No active startup found.", ephemeral=True)
-        return
-
-    channel = interaction.channel
-    startup_msg = await channel.fetch_message(startup["message_id"])
-
-    embed = discord.Embed(
-        title="<a:blue_rose:1510771482945519789> Cees Rensselaer County Nation — __Session Released__ <a:blue_rose:1510771482945519789>",
-        description=(
-            f"{interaction.user.mention} **Has released their Roleplay Session!** Before joining, be sure to follow all instructions given by the host and co-hosts prior to leaving from spawn. In addition, all **Cees Rensselaer County Nation** regulations must be followed throughout the session.\n\n"
-            "> <:dasharrow:1510776394332770374> Session links will be regenerated soon, so be sure to join quickly. Reinvites will occur when the host feels the need to do so, so please do not ask the host for the link.\n\n"
-            "> <:Info:1510771031508254811> **__Session Information__**\n"
-            f"> <:Mass_Lines:1510771109794943117><:dashline:1510106061443563621> **Host:** {interaction.user.mention}\n"
-            f"> <:Mass_Lines:1510771109794943117><:dashline:1510106061443563621> **Fail Roleplay Speeds:** {FRP_input}\n"
-            f"> <:Mass_Lines:1510771109794943117><:dashline:1510106061443563621> **Peacetime Status:** {PT_input}\n"
-            f"> <:Mass_Lines:1510771109794943117><:dashline:1510106061443563621> **LEO Status:** {LEO_input}\n"
-            f"> <:Mass_Lines:1510771109794943117><:dashline:1510106061443563621> **House Claiming:** {HC_input}"
-        ),
-        color=0xD4FF82
-    )
-
-    embed.set_image(url="https://cdn.discordapp.com/attachments/1502420648327118978/1510966610897145967/Screenshot_2026-05-07_160810.png")
-    embed.set_footer(
-        text="🌿Cees Rensselaer County Nation™",
-        icon_url="https://cdn.discordapp.com/icons/1497481852678832158/974ce73407bb790c1348a61f00093218.webp?size=1280"
-    )
-
-    view = SessionLinkView(startup_msg, link)
-
-    await channel.send(embed=embed, view=view)
 
     await interaction.response.send_message("✅ Session released.", ephemeral=True)
 
