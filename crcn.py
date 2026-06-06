@@ -15,7 +15,7 @@ EMBED_COLOR = 0xd4ff82
 intents = discord.Intents.default()
 
 bot = commands.Bot(
-    command_prefix="!",
+    command_prefix="-",
     intents=intents
 )
 
@@ -1143,5 +1143,44 @@ async def blackjack(
     await interaction.response.send_message(
         embed=embed
     )
+
+@bot.command(name="purge")
+@commands.has_permissions(manage_messages=True)
+async def purge(ctx, amount: int):
+
+    if amount <= 0:
+        return await ctx.send(
+            "Please provide a number greater than 0.",
+            delete_after=5
+        )
+
+    deleted = 0
+
+    async for message in ctx.channel.history(limit=500):
+
+        if deleted >= amount:
+            break
+
+        if message.pinned:
+            continue
+
+        try:
+            await message.delete()
+            deleted += 1
+        except discord.Forbidden:
+            pass
+        except discord.HTTPException:
+            pass
+
+    embed = discord.Embed(
+        title="Messages Purged",
+        description=f"Deleted **{deleted}** messages.",
+        color=0xd4ff82
+    )
+
+    confirmation = await ctx.send(embed=embed)
+
+    await asyncio.sleep(5)
+    await confirmation.delete()
 
 bot.run(TOKEN)
