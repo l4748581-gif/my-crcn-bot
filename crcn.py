@@ -1,262 +1,1149 @@
 import discord
 from discord.ext import commands
 from discord import app_commands
-import os
-from datetime import datetime
-from zoneinfo import ZoneInfo
 
-# Load token from Railway environment variables
+import sqlite3
+import random
+import asyncio
+import time
+
 TOKEN = os.getenv("DISCORD_TOKEN")
 
-# ---------------- INTENTS ----------------
+EMBED_COLOR = 0xd4ff82
+
 intents = discord.Intents.default()
-intents.message_content = True
-intents.members = True  # REQUIRED for welcome event
 
-bot = commands.Bot(command_prefix="?", intents=intents)
+bot = commands.Bot(
+    command_prefix="!",
+    intents=intents
+)
 
-WELCOME_CHANNEL_ID = 1510849019838988409
-ROLE_LOCK_ID = 1502773113408983271
+db = sqlite3.connect(
+    "economy.db"
+)
 
-# ---------------- STARTUP STORAGE ----------------
-active_startups = []
+cursor = db.cursor()
 
-# ---------------- READY EVENT ----------------
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS users (
+    user_id INTEGER PRIMARY KEY,
+    cash INTEGER DEFAULT 1000,
+    bank INTEGER DEFAULT 0
+)
+""")
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS cooldowns (
+    user_id INTEGER,
+    command TEXT,
+    last_used INTEGER,
+    PRIMARY KEY(user_id, command)
+)
+""")
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS inventory (
+    user_id INTEGER,
+    item TEXT,
+    amount INTEGER DEFAULT 1,
+    PRIMARY KEY(user_id, item)
+)
+""")
+
+db.commit()
+
+def ensure_user(user_id):
+
+    cursor.execute(
+        "SELECT user_id FROM users WHERE user_id = ?",
+        (user_id,)
+    )
+
+    if cursor.fetchone() is None:
+
+        cursor.execute(
+            """
+            INSERT INTO users
+            (user_id, cash, bank)
+            VALUES (?, ?, ?)
+            """,
+            (user_id, 1000, 0)
+        )
+
+        db.commit()
+
+
+def get_cash(user_id):
+
+    ensure_user(user_id)
+
+    cursor.execute(
+        "SELECT cash FROM users WHERE user_id = ?",
+        (user_id,)
+    )
+
+    return cursor.fetchone()[0]
+
+
+def get_bank(user_id):
+
+    ensure_user(user_id)
+
+    cursor.execute(
+        "SELECT bank FROM users WHERE user_id = ?",
+        (user_id,)
+    )
+
+    return cursor.fetchone()[0]
+
+
+def add_cash(user_id, amount):
+
+    ensure_user(user_id)
+
+    cursor.execute(
+        """
+        UPDATE users
+        SET cash = cash + ?
+        WHERE user_id = ?
+        """,
+        (amount, user_id)
+    )
+
+    db.commit()
+
+
+def remove_cash(user_id, amount):
+
+    ensure_user(user_id)
+
+    cursor.execute(
+        """
+        UPDATE users
+        SET cash = MAX(cash - ?, 0)
+        WHERE user_id = ?
+        """,
+        (amount, user_id)
+    )
+
+    db.commit()
+
+COOLDOWN_HOURS = 24
+
+
+def format_time(seconds):
+
+    hours = seconds // 3600
+    minutes = (seconds % 3600) // 60
+
+    return f"{hours}h {minutes}m"
+
+
+def check_cooldown(user_id, command):
+
+    cursor.execute(
+        """
+        SELECT last_used
+        FROM cooldowns
+        WHERE user_id = ?
+        AND command = ?
+        """,
+        (user_id, command)
+    )
+
+    result = cursor.fetchone()
+
+    if result is None:
+        return False, 0
+
+    last_used = result[0]
+
+    now = int(time.time())
+
+    remaining = (
+        COOLDOWN_HOURS * 3600
+    ) - (now - last_used)
+
+    if remaining > 0:
+        return True, remaining
+
+    return False, 0
+
+
+def set_cooldown(user_id, command):
+
+    cursor.execute(
+        """
+        INSERT OR REPLACE INTO cooldowns
+        (user_id, command, last_used)
+        VALUES (?, ?, ?)
+        """,
+        (
+            user_id,
+            command,
+            int(time.time())
+        )
+    )
+
+    db.commit()
+
+SHOP_ITEMS = {
+    "Image Permissions": 2500,
+    "Laptop": 5000,
+    "Banned Vehicle Exempt": 10000,
+    "Lottery Ticket": 500,
+    "Luxury Watch": 15000
+}
+
 @bot.event
 async def on_ready():
+
     await bot.tree.sync()
 
-    activity = discord.Activity(
-        type=discord.ActivityType.watching,
-        name="discord.gg/crcnation"
+    print(
+        f"Logged in as {bot.user}"
     )
 
-    await bot.change_presence(
-        status=discord.Status.online,
-        activity=activity
-    )
-
-    print(f"Logged in as {bot.user}")
-
-
-# ---------------- SLASH COMMAND ----------------
-@bot.tree.command(name="membercount", description="Displays the server member count.")
-async def membercount(interaction: discord.Interaction):
-
-    guild = interaction.guild
-
-    now = datetime.now(ZoneInfo("America/Chicago"))
-    time_text = now.strftime("Today at %-I:%M %p")
-
-    embed = discord.Embed(
-        title="Membercount",
-        description=str(guild.member_count),
-        color=0xFA474A
-    )
-
-    embed.set_footer(text=time_text)
-
-    await interaction.response.send_message(embed=embed)
-
-
-# ---------------- WELCOME EVENT ----------------
-@bot.event
-async def on_member_join(member):
-
-    channel = member.guild.get_channel(WELCOME_CHANNEL_ID)
-
-    if channel is None:
-        return
-
-    role1 = member.guild.get_role(ROLE_LOCK_ID)
-    if role1:
-        await member.add_roles(role1)
-
-    embed = discord.Embed(
-        title="<a:balloons:1510771333997264936> Welcome to CRCN '26! <a:balloons:1510771333997264936>",
-        description=(
-            f"> Welcome, {member.mention} to "
-            f"**Cees Rensselaer County Nation**.\n\n"
-            f"<:dasharrow:1510776394332770374> Before partaking in sessions, please review over "
-            f"<#1497725279144120450> before attending any sessions. "
-            f"To become a civilian, please verify your 'ROBLOX' account using the "
-            f"'BLOXLINK' Discord application within <#1503899088188342352>."
-        ),
-        color=0xD4FF82
-    )
-
-    embed.set_author(
-        name=str(member),
-        icon_url=member.display_avatar.url
-    )
-
-    embed.set_image(
-        url="https://cdn.discordapp.com/attachments/1507921885436969091/1510846001701851136/Fredoka_8.png"
-    )
-
-    now = datetime.now(ZoneInfo("America/Chicago"))
-    embed.set_footer(text=f"Today at {now.strftime('%I:%M %p').lstrip('0')}")
-
-    await channel.send(content=f"{member.mention}", embed=embed)
-
-
-# ---------------- SOON COMMAND ----------------
-@bot.command(name="soon")
-@commands.has_permissions(administrator=True)
-async def soon(ctx):
-
-    try:
-        await ctx.message.delete()
-    except:
-        pass
-
-    embed = discord.Embed(color=0xD4FF82)
-    embed.set_image(url="https://cdn.discordapp.com/attachments/1507921885436969091/1510973193433780234/Server_1.png")
-
-    await ctx.send(embed=embed)
-
-
-@soon.error
-async def soon_error(ctx, error):
-
-    if isinstance(error, commands.MissingPermissions):
-        try:
-            await ctx.message.delete()
-        except:
-            pass
-
-        msg = await ctx.send("❌ No permission.")
-        await msg.delete(delay=5)
-
-
-# ---------------- PD SOON COMMAND ----------------
-@bot.command(name="pdsoon")
-@commands.has_permissions(administrator=True)
-async def pdsoon(ctx):
-
-    try:
-        await ctx.message.delete()
-    except:
-        pass
-
-    embed = discord.Embed(color=0xD4FF82)
-    embed.set_image(url="https://cdn.discordapp.com/attachments/1507980572889186394/1510978702496763954/Server_2.png")
-
-    await ctx.send(embed=embed)
-
-
-@pdsoon.error
-async def pdsoon_error(ctx, error):
-
-    if isinstance(error, commands.MissingPermissions):
-        try:
-            await ctx.message.delete()
-        except:
-            pass
-
-        msg = await ctx.send("❌ No permission.")
-        await msg.delete(delay=5)
-
-
-# ---------------- STARTUP COMMAND ----------------
-@bot.tree.command(name="startup", description="Start a roleplay session.")
-@app_commands.describe(
-    reactions="Reactions required before setup starts.",
-    image="Optional image for the startup embed."
+@bot.tree.command(
+    name="balance",
+    description="View your balance."
 )
-async def startup(interaction: discord.Interaction, reactions: int, image: discord.Attachment = None):
+async def balance(
+    interaction: discord.Interaction
+):
 
-    role_id = ROLE_LOCK_ID
-
-    if not any(r.id == role_id for r in interaction.user.roles):
-        await interaction.response.send_message("❌ No permission.", ephemeral=True)
-        return
-
-    if len(active_startups) >= 2:
-        await interaction.response.send_message(
-            "❌ Only 2 Startups are allowed at once. End one before starting another.",
-            ephemeral=True
-        )
-        return
-
-    embed = discord.Embed(
-        title="<a:beatinghearts:1510771374359318639> Cees Rensselaer County Nation — Roleplay Startup!",
-        color=0xD4FF82
+    ensure_user(
+        interaction.user.id
     )
 
-    embed.set_image(url="https://cdn.discordapp.com/attachments/1502420648327118978/1510966611463639080/Screenshot_2026-05-07_160747.png")
+    cash = get_cash(
+        interaction.user.id
+    )
 
-    msg = await interaction.channel.send(
-        content=f"<@&{ROLE_LOCK_ID}>",
+    bank = get_bank(
+        interaction.user.id
+    )
+
+    embed = discord.Embed(
+        title="Account Balance",
+        color=EMBED_COLOR
+    )
+
+    embed.add_field(
+        name="Cash",
+        value=f"${cash:,}",
+        inline=True
+    )
+
+    embed.add_field(
+        name="Bank",
+        value=f"${bank:,}",
+        inline=True
+    )
+
+    embed.add_field(
+        name="Net Worth",
+        value=f"${cash + bank:,}",
+        inline=False
+    )
+
+    await interaction.response.send_message(
         embed=embed
     )
 
-    await msg.add_reaction(bot.get_emoji(1510771397771792394))
+@bot.tree.command(
+    name="dailyeconomy",
+    description="Claim your daily reward."
+)
+async def dailyeconomy(
+    interaction: discord.Interaction
+):
 
-    active_startups.append({
-        "host_id": interaction.user.id,
-        "message_id": msg.id,
-        "required": reactions,
-        "state": "startup"
-    })
+    ensure_user(
+        interaction.user.id
+    )
 
-    await interaction.response.send_message("✅ Startup created.", ephemeral=True)
+    cooldown, remaining = check_cooldown(
+        interaction.user.id,
+        "daily"
+    )
 
+    if cooldown:
 
-class SessionLinkView(discord.ui.View):
-    def __init__(self, startup_message, release_link):
-        super().__init__(timeout=None)
-        self.startup_message = startup_message
-        self.release_link = release_link
+        embed = discord.Embed(
+            title="Daily Cooldown",
+            description=(
+                f"You already claimed your daily reward.\n\n"
+                f"Try again in **{format_time(remaining)}**."
+            ),
+            color=EMBED_COLOR
+        )
 
-    @discord.ui.button(label="Session Link", style=discord.ButtonStyle.secondary)
-    async def session_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-
-        reacted = False
-
-        for reaction in self.startup_message.reactions:
-            users = [u async for u in reaction.users()]
-            if interaction.user in users:
-                reacted = True
-                break
-
-        if not reacted:
-            await interaction.response.send_message(
-                f"You have not reacted to the startup message. [React here.]({self.startup_message.jump_url})",
-                ephemeral=True
-            )
-            return
-
-        await interaction.response.send_message(
-            f"Click [here]({self.release_link}) to join the session.",
+        return await interaction.response.send_message(
+            embed=embed,
             ephemeral=True
         )
 
+    reward = random.randint(
+        750,
+        1500
+    )
 
-@bot.tree.command(name="release", description="Release a roleplay session.")
-@app_commands.describe(
-    link="Session join link",
-    frp_input="Fail Roleplay Speed",
-    pt_input="Peacetime Status",
-    leo_input="LEO Status",
-    hc_input="House Claiming"
+    add_cash(
+        interaction.user.id,
+        reward
+    )
+
+    set_cooldown(
+        interaction.user.id,
+        "daily"
+    )
+
+    embed = discord.Embed(
+        title="Daily Economy",
+        description=(
+            f"You claimed your daily economy "
+            f"and received **${reward:,}**."
+        ),
+        color=EMBED_COLOR
+    )
+
+    await interaction.response.send_message(
+        embed=embed
+    )
+
+@bot.tree.command(
+    name="earn",
+    description="Work a job and earn money."
 )
-async def release(
-    interaction: discord.Interaction,
-    link: str,
-    frp_input: str,
-    pt_input: str,
-    leo_input: str,
-    hc_input: str
+async def earn(
+    interaction: discord.Interaction
 ):
 
-    role_id = ROLE_LOCK_ID
+    ensure_user(
+        interaction.user.id
+    )
 
-    if not any(r.id == role_id for r in interaction.user.roles):
-        await interaction.response.send_message("❌ No permission.", ephemeral=True)
-        return
+    cooldown, remaining = check_cooldown(
+        interaction.user.id,
+        "earn"
+    )
 
-    await interaction.response.send_message("✅ Session released.", ephemeral=True)
+    if cooldown:
 
-# ---------------- RUN ----------------
+        embed = discord.Embed(
+            title="Work Cooldown",
+            description=(
+                f"You already worked today.\n\n"
+                f"Try again in **{format_time(remaining)}**."
+            ),
+            color=EMBED_COLOR
+        )
+
+        return await interaction.response.send_message(
+            embed=embed,
+            ephemeral=True
+        )
+
+    jobs = [
+        "waitress",
+        "police officer",
+        "mechanic",
+        "cashier",
+        "construction worker",
+        "delivery driver",
+        "tow truck operator",
+        "taxi driver",
+        "store clerk",
+        "firefighter"
+    ]
+
+    job = random.choice(
+        jobs
+    )
+
+    earned = random.randint(
+        200,
+        1000
+    )
+
+    add_cash(
+        interaction.user.id,
+        earned
+    )
+
+    set_cooldown(
+        interaction.user.id,
+        "earn"
+    )
+
+    embed = discord.Embed(
+        title="Earned Money",
+        description=(
+            f"You worked hard as a "
+            f"**{job}** and earned "
+            f"**${earned:,}**."
+        ),
+        color=EMBED_COLOR
+    )
+
+    await interaction.response.send_message(
+        embed=embed
+    )
+
+@bot.tree.command(
+    name="withdraw",
+    description="Withdraw money from your bank."
+)
+@app_commands.describe(
+    amount="Amount to withdraw"
+)
+async def withdraw(
+    interaction: discord.Interaction,
+    amount: int
+):
+
+    ensure_user(
+        interaction.user.id
+    )
+
+    if amount <= 0:
+
+        return await interaction.response.send_message(
+            "Amount must be greater than 0.",
+            ephemeral=True
+        )
+
+    bank = get_bank(
+        interaction.user.id
+    )
+
+    if amount > bank:
+
+        embed = discord.Embed(
+            title="Withdrawal Failed",
+            description="You don't have that much money in your bank account.",
+            color=EMBED_COLOR
+        )
+
+        return await interaction.response.send_message(
+            embed=embed,
+            ephemeral=True
+        )
+
+    cursor.execute(
+        """
+        UPDATE users
+        SET bank = bank - ?
+        WHERE user_id = ?
+        """,
+        (
+            amount,
+            interaction.user.id
+        )
+    )
+
+    add_cash(
+        interaction.user.id,
+        amount
+    )
+
+    db.commit()
+
+    embed = discord.Embed(
+        title="Withdrawal Complete",
+        description=f"You withdrew **${amount:,}** from your bank account.",
+        color=EMBED_COLOR
+    )
+
+    await interaction.response.send_message(
+        embed=embed
+    )
+
+@bot.tree.command(
+    name="pay",
+    description="Pay another user."
+)
+@app_commands.describe(
+    user="User to pay",
+    amount="Amount to send"
+)
+async def pay(
+    interaction: discord.Interaction,
+    user: discord.Member,
+    amount: int
+):
+
+    ensure_user(
+        interaction.user.id
+    )
+
+    ensure_user(
+        user.id
+    )
+
+    if user.bot:
+
+        return await interaction.response.send_message(
+            "You cannot pay bots.",
+            ephemeral=True
+        )
+
+    if user.id == interaction.user.id:
+
+        return await interaction.response.send_message(
+            "You cannot pay yourself.",
+            ephemeral=True
+        )
+
+    if amount <= 0:
+
+        return await interaction.response.send_message(
+            "Amount must be greater than 0.",
+            ephemeral=True
+        )
+
+    if get_cash(
+        interaction.user.id
+    ) < amount:
+
+        embed = discord.Embed(
+            title="Payment Failed",
+            description="You don't have enough cash.",
+            color=EMBED_COLOR
+        )
+
+        return await interaction.response.send_message(
+            embed=embed,
+            ephemeral=True
+        )
+
+    remove_cash(
+        interaction.user.id,
+        amount
+    )
+
+    add_cash(
+        user.id,
+        amount
+    )
+
+    embed = discord.Embed(
+        title="Payment Sent",
+        description=(
+            f"You sent **${amount:,}** "
+            f"to {user.mention}."
+        ),
+        color=EMBED_COLOR
+    )
+
+    await interaction.response.send_message(
+        embed=embed
+    )
+
+@bot.tree.command(
+    name="shop",
+    description="View the shop."
+)
+async def shop(
+    interaction: discord.Interaction
+):
+
+    embed = discord.Embed(
+        title="Economy Shop",
+        color=EMBED_COLOR
+    )
+
+    description = ""
+
+    for item, price in SHOP_ITEMS.items():
+
+        description += (
+            f"**{item}** — "
+            f"${price:,}\n"
+        )
+
+    embed.description = description
+
+    await interaction.response.send_message(
+        embed=embed
+    )
+
+@bot.tree.command(
+    name="inventory",
+    description="View your inventory."
+)
+async def inventory(
+    interaction: discord.Interaction
+):
+
+    ensure_user(
+        interaction.user.id
+    )
+
+    cursor.execute(
+        """
+        SELECT item, amount
+        FROM inventory
+        WHERE user_id = ?
+        """,
+        (
+            interaction.user.id,
+        )
+    )
+
+    items = cursor.fetchall()
+
+    if not items:
+
+        text = (
+            "Your inventory is empty."
+        )
+
+    else:
+
+        text = "\n".join(
+            [
+                f"• **{item}** x{amount}"
+                for item, amount in items
+            ]
+        )
+
+    embed = discord.Embed(
+        title="Inventory",
+        description=text,
+        color=EMBED_COLOR
+    )
+
+    await interaction.response.send_message(
+        embed=embed
+    )
+
+@bot.tree.command(
+    name="buy",
+    description="Purchase an item from the shop."
+)
+@app_commands.describe(
+    item="Item to purchase"
+)
+async def buy(
+    interaction: discord.Interaction,
+    item: str
+):
+
+    ensure_user(
+        interaction.user.id
+    )
+
+    item = item.title()
+
+    if item not in SHOP_ITEMS:
+
+        embed = discord.Embed(
+            title="❌ Item Not Found",
+            description="That item does not exist in the shop.",
+            color=EMBED_COLOR
+        )
+
+        return await interaction.response.send_message(
+            embed=embed,
+            ephemeral=True
+        )
+
+    price = SHOP_ITEMS[item]
+
+    if get_cash(
+        interaction.user.id
+    ) < price:
+
+        embed = discord.Embed(
+            title="Not Enough Cash",
+            description=(
+                f"You need **${price:,}** "
+                f"to buy **{item}**."
+            ),
+            color=EMBED_COLOR
+        )
+
+        return await interaction.response.send_message(
+            embed=embed,
+            ephemeral=True
+        )
+
+    remove_cash(
+        interaction.user.id,
+        price
+    )
+
+    cursor.execute(
+        """
+        INSERT OR IGNORE INTO inventory
+        (user_id, item, amount)
+        VALUES (?, ?, 0)
+        """,
+        (
+            interaction.user.id,
+            item
+        )
+    )
+
+    cursor.execute(
+        """
+        UPDATE inventory
+        SET amount = amount + 1
+        WHERE user_id = ?
+        AND item = ?
+        """,
+        (
+            interaction.user.id,
+            item
+        )
+    )
+
+    db.commit()
+
+    embed = discord.Embed(
+        title="Purchase Complete",
+        description=(
+            f"You bought **{item}** "
+            f"for **${price:,}**."
+        ),
+        color=EMBED_COLOR
+    )
+
+    await interaction.response.send_message(
+        embed=embed
+    )
+
+@bot.tree.command(
+    name="rob",
+    description="Attempt to rob another user."
+)
+@app_commands.describe(
+    user="Victim"
+)
+async def rob(
+    interaction: discord.Interaction,
+    user: discord.Member
+):
+
+    ensure_user(
+        interaction.user.id
+    )
+
+    ensure_user(
+        user.id
+    )
+
+    if user.bot:
+
+        return await interaction.response.send_message(
+            "You cannot rob bots.",
+            ephemeral=True
+        )
+
+    if user.id == interaction.user.id:
+
+        return await interaction.response.send_message(
+            "You cannot rob yourself.",
+            ephemeral=True
+        )
+
+    cooldown, remaining = check_cooldown(
+        interaction.user.id,
+        "rob"
+    )
+
+    if cooldown:
+
+        embed = discord.Embed(
+            title="Robbery Cooldown",
+            description=(
+                f"You already attempted a robbery today.\n\n"
+                f"Try again in **{format_time(remaining)}**."
+            ),
+            color=EMBED_COLOR
+        )
+
+        return await interaction.response.send_message(
+            embed=embed,
+            ephemeral=True
+        )
+
+    success = random.randint(
+        1,
+        100
+    ) <= 45
+
+    if success:
+
+        victim_cash = get_cash(
+            user.id
+        )
+
+        if victim_cash <= 0:
+
+            embed = discord.Embed(
+                title="Robbery Failed",
+                description=(
+                    f"{user.mention} "
+                    f"has no cash to steal."
+                ),
+                color=EMBED_COLOR
+            )
+
+            set_cooldown(
+                interaction.user.id,
+                "rob"
+            )
+
+            return await interaction.response.send_message(
+                embed=embed
+            )
+
+        stolen = min(
+            victim_cash,
+            random.randint(
+                250,
+                1500
+            )
+        )
+
+        remove_cash(
+            user.id,
+            stolen
+        )
+
+        add_cash(
+            interaction.user.id,
+            stolen
+        )
+
+        embed = discord.Embed(
+            title="Robbery Successful",
+            description=(
+                f"You robbed {user.mention} "
+                f"and stole **${stolen:,}**."
+            ),
+            color=EMBED_COLOR
+        )
+
+    else:
+
+        fine = random.randint(
+            250,
+            1000
+        )
+
+        remove_cash(
+            interaction.user.id,
+            fine
+        )
+
+        embed = discord.Embed(
+            title="Robbery Failed",
+            description=(
+                f"You were caught by the police.\n\n"
+                f"You paid a fine of "
+                f"**${fine:,}**."
+            ),
+            color=EMBED_COLOR
+        )
+
+    set_cooldown(
+        interaction.user.id,
+        "rob"
+    )
+
+    await interaction.response.send_message(
+        embed=embed
+    )
+
+@bot.tree.command(
+    name="crime",
+    description="Commit a crime."
+)
+async def crime(
+    interaction: discord.Interaction
+):
+
+    ensure_user(
+        interaction.user.id
+    )
+
+    cooldown, remaining = check_cooldown(
+        interaction.user.id,
+        "crime"
+    )
+
+    if cooldown:
+
+        embed = discord.Embed(
+            title="Crime Cooldown",
+            description=(
+                f"You already committed a crime today.\n\n"
+                f"Try again in **{format_time(remaining)}**."
+            ),
+            color=EMBED_COLOR
+        )
+
+        return await interaction.response.send_message(
+            embed=embed,
+            ephemeral=True
+        )
+
+    crimes = [
+        "sold stolen electronics",
+        "stole a luxury vehicle",
+        "ran an ATM scam",
+        "robbed a convenience store",
+        "sold counterfeit goods",
+        "smuggled illegal cargo"
+    ]
+
+    crime_name = random.choice(
+        crimes
+    )
+
+    success = random.randint(
+        1,
+        100
+    ) <= 55
+
+    if success:
+
+        payout = random.randint(
+            500,
+            3000
+        )
+
+        add_cash(
+            interaction.user.id,
+            payout
+        )
+
+        embed = discord.Embed(
+            title="Crime Successful",
+            description=(
+                f"You successfully "
+                f"**{crime_name}** "
+                f"and earned "
+                f"**${payout:,}**."
+            ),
+            color=EMBED_COLOR
+        )
+
+    else:
+
+        fine = random.randint(
+            500,
+            2000
+        )
+
+        remove_cash(
+            interaction.user.id,
+            fine
+        )
+
+        embed = discord.Embed(
+            title="Crime Failed",
+            description=(
+                f"You were caught by police.\n\n"
+                f"You paid a fine of "
+                f"**${fine:,}**."
+            ),
+            color=EMBED_COLOR
+        )
+
+    set_cooldown(
+        interaction.user.id,
+        "crime"
+    )
+
+    await interaction.response.send_message(
+        embed=embed
+    )
+
+@bot.tree.command(
+    name="coinflip",
+    description="Flip a coin and gamble your money."
+)
+@app_commands.describe(
+    amount="Amount to bet"
+)
+async def coinflip(
+    interaction: discord.Interaction,
+    amount: int
+):
+
+    ensure_user(
+        interaction.user.id
+    )
+
+    if amount <= 0:
+
+        return await interaction.response.send_message(
+            "Bet must be greater than 0.",
+            ephemeral=True
+        )
+
+    if get_cash(
+        interaction.user.id
+    ) < amount:
+
+        embed = discord.Embed(
+            title="Not Enough Cash",
+            description="You don't have enough cash for that bet.",
+            color=EMBED_COLOR
+        )
+
+        return await interaction.response.send_message(
+            embed=embed,
+            ephemeral=True
+        )
+
+    result = random.choice(
+        ["Heads", "Tails"]
+    )
+
+    win = random.choice(
+        [True, False]
+    )
+
+    if win:
+
+        add_cash(
+            interaction.user.id,
+            amount
+        )
+
+        outcome = (
+            f"The coin landed on **{result}**.\n\n"
+            f"You won **${amount:,}**."
+        )
+
+        title = "Coin Flip Victory"
+
+    else:
+
+        remove_cash(
+            interaction.user.id,
+            amount
+        )
+
+        outcome = (
+            f"The coin landed on **{result}**.\n\n"
+            f"You lost **${amount:,}**."
+        )
+
+        title = "Coin Flip Defeat"
+
+    embed = discord.Embed(
+        title=title,
+        description=outcome,
+        color=EMBED_COLOR
+    )
+
+    await interaction.response.send_message(
+        embed=embed
+    )
+
+@bot.tree.command(
+    name="blackjack",
+    description="Play blackjack."
+)
+@app_commands.describe(
+    amount="Amount to bet"
+)
+async def blackjack(
+    interaction: discord.Interaction,
+    amount: int
+):
+
+    ensure_user(
+        interaction.user.id
+    )
+
+    if amount <= 0:
+
+        return await interaction.response.send_message(
+            "Bet must be greater than 0.",
+            ephemeral=True
+        )
+
+    if get_cash(
+        interaction.user.id
+    ) < amount:
+
+        embed = discord.Embed(
+            title="Not Enough Cash",
+            description="You don't have enough cash for that bet.",
+            color=EMBED_COLOR
+        )
+
+        return await interaction.response.send_message(
+            embed=embed,
+            ephemeral=True
+        )
+
+    player = random.randint(
+        15,
+        21
+    )
+
+    dealer = random.randint(
+        15,
+        21
+    )
+
+    if player > dealer:
+
+        add_cash(
+            interaction.user.id,
+            amount
+        )
+
+        result = (
+            f"**Your Hand:** {player}\n"
+            f"**Dealer Hand:** {dealer}\n\n"
+            f"You won **${amount:,}**."
+        )
+
+        title = "Blackjack Victory"
+
+    elif dealer > player:
+
+        remove_cash(
+            interaction.user.id,
+            amount
+        )
+
+        result = (
+            f"**Your Hand:** {player}\n"
+            f"**Dealer Hand:** {dealer}\n\n"
+            f"You lost **${amount:,}**."
+        )
+
+        title = "Blackjack Defeat"
+
+    else:
+
+        result = (
+            f"**Your Hand:** {player}\n"
+            f"**Dealer Hand:** {dealer}\n\n"
+            f"It's a tie. Your bet was returned."
+        )
+
+        title = "Push"
+
+    embed = discord.Embed(
+        title=title,
+        description=result,
+        color=EMBED_COLOR
+    )
+
+    await interaction.response.send_message(
+        embed=embed
+    )
+
 bot.run(TOKEN)
