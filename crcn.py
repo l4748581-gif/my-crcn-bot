@@ -198,12 +198,9 @@ SHOP_ITEMS = {
 
 @bot.event
 async def on_ready():
-
-    await bot.tree.sync()
-
-    print(
-        f"Logged in as {bot.user}"
-    )
+    synced = await bot.tree.sync()
+    print(f"Synced {len(synced)} commands")
+    print(f"Logged in as {bot.user}")
 
 @bot.tree.command(
     name="balance",
