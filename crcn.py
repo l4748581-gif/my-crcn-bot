@@ -13,6 +13,7 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 EMBED_COLOR = 0xd4ff82
 
 intents = discord.Intents.default()
+intents.message_content = True
 
 bot = commands.Bot(
     command_prefix="-",
