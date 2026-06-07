@@ -1211,11 +1211,11 @@ async def startup(
     embed = discord.Embed(
         title="Cees Rensselaer County Nation — __Server Startup:__",
         description=(
-            f"<:bluedot:1512340902817955850> {interaction.user.mention} is hosting a server! Before joining, please ensure your privacy settings are configured to \"__Everyone__\" so that invitations can be delivered if needed. By participating in this server, you acknowledge that you have read and agree to follow all server regulations. A follow-up notification will be sent by the host once the session is setup.\n\n"
+          " <:bluedot:1512943229216227449> {interaction.user.mention} is hosting a server! Before joining, please ensure your privacy settings are configured to \"__Everyone__\" so that invitations can be delivered if needed. By participating in this server, you acknowledge that you have read and agree to follow all server regulations. A follow-up notification will be sent by the host once the session is setup.\n\n"
 
-            "<:bluearrow:1512340736354291712> We ask that all members remain patient while staff complete setup. A significant amount of preparation goes into each session to provide an organized and enjoyable roleplay experience for everyone involved.\n\n"
+            "<:bluearrow:1512942871492427917> We ask that all members remain patient while staff complete setup. A significant amount of preparation goes into each session to provide an organized and enjoyable roleplay experience for everyone involved.\n\n"
 
-            f"<:bluereply:1512360163649126530> The session will begin once we reach ({required_reactions}) reactions. Upon meeting this requirement, early access information will be released and the host will continue with server release."
+            f"<:bluearrow1:1512942887569195058> The session will begin once we reach ({required_reactions}) reactions. Upon meeting this requirement, early access information will be released and the host will continue with server release."
         ),
         color=EMBED_COLOR
     )
@@ -1317,9 +1317,9 @@ async def on_raw_reaction_add(payload):
     embed = discord.Embed(
         title="Cees Rensselaer County Nation — __Server Setup:__",
         description=(
-            f"<:bluedot:1512340902817955850> {host.mention} has now begun preparing their session! Early Access members will soon be able to join using the Early Entry link once it is released. Consider boosting the server to gain access to Early Entry perks and other exclusive benefits.\n\n"
+            f"<:bluedot:1512943229216227449> {host.mention} has now begun preparing their session! Early Access members will soon be able to join using the Early Entry link once it is released. Consider boosting the server to gain access to Early Entry perks and other exclusive benefits.\n\n"
 
-            "<:bluereply:1512360163649126530> Please remain patient while the host completes setup and final preparations before opening the session to participants."
+            "<:bluearrow1:1512942887569195058> Please remain patient while the host completes setup and final preparations before opening the session to participants."
         ),
         color=EMBED_COLOR
     )
