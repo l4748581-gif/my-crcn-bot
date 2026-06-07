@@ -10,7 +10,9 @@ import time
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 
-EMBED_COLOR = 0xd4ff82
+EMBED_COLOR = 0x89e6ff
+STAFF_ROLE_ID = 1503903256076877945
+STARTUP_TRACKER = {}
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -1183,5 +1185,136 @@ async def purge(ctx, amount: int):
 
     await asyncio.sleep(5)
     await confirmation.delete()
+
+@bot.tree.command(
+name="startup",
+description="Start a roleplay session startup."
+)
+@app_commands.describe(
+required_reactions="Number of reactions required"
+)
+async def startup(
+interaction: discord.Interaction,
+required_reactions: int
+):
+
+```
+role = interaction.guild.get_role(
+    STAFF_ROLE_ID
+)
+
+if role not in interaction.user.roles:
+
+    return await interaction.response.send_message(
+        "You do not have permission to use this command.",
+        ephemeral=True
+    )
+
+embed = discord.Embed(
+    title="Cees Rensselaer County Nation — __Server Startup:__",
+    description=(
+        f"<:bluedot:1512340902817955850> {interaction.user.mention} is hosting a server! Before joining, please ensure your privacy settings are configured to \"__Everyone__\" so that invitations can be delivered if needed. By participating in this server, you acknowledge that you have read and agree to follow all server regulations. A follow-up notification will be sent by the host once the session is setup.\n\n"
+
+        "<:bluearrow:1512340736354291712> We ask that all members remain patient while staff complete setup. A significant amount of preparation goes into each session to provide an organized and enjoyable roleplay experience for everyone involved.\n\n"
+
+        f"<:bluereply:1512360163649126530> The session will begin once we reach ({required_reactions}) reactions. Upon meeting this requirement, early access information will be released and the host will continue with server release."
+    ),
+    color=EMBED_COLOR
+)
+
+embed.set_thumbnail(
+    url=interaction.user.display_avatar.url
+)
+
+embed.set_image(
+    url="https://cdn.discordapp.com/attachments/1512970170363150457/1512997548867059712/CR_2.gif?ex=6a262045&is=6a24cec5&hm=a8cc5941d7d59064cb969ab66ce451738f13f3fd49646cbdc2684aba89df841e"
+)
+
+embed.set_footer(
+    text="Cees Rensselaer County Nation 💎",
+    icon_url="https://cdn.discordapp.com/icons/1497481852678832158/fbd6f1b95a93c5efdb00e21365bda256.webp?size=1536"
+)
+
+await interaction.response.send_message(
+    "@everyone",
+    embed=embed
+)
+
+startup_message = await interaction.original_response()
+
+reaction = "<a:blue_poppinghearts:1512942726499274752>"
+
+await startup_message.add_reaction(
+    reaction
+)
+
+STARTUP_TRACKER[startup_message.id] = {
+    "required": required_reactions,
+    "host": interaction.user.id
+}
+```
+
+@bot.event
+async def on_raw_reaction_add(payload):
+
+```
+if payload.message_id not in STARTUP_TRACKER:
+    return
+
+data = STARTUP_TRACKER[
+    payload.message_id
+]
+
+channel = bot.get_channel(
+    payload.channel_id
+)
+
+message = await channel.fetch_message(
+    payload.message_id
+)
+
+reaction_count = 0
+
+for reaction in message.reactions:
+
+    if str(reaction.emoji) == "<a:blue_poppinghearts:1512942726499274752>":
+        reaction_count = reaction.count
+        break
+
+if reaction_count < data["required"]:
+    return
+
+host = message.guild.get_member(
+    data["host"]
+)
+
+embed = discord.Embed(
+    title="Cees Rensselaer County Nation — __Server Setup:__",
+    description=(
+        f"<:bluedot:1512340902817955850> {host.mention} has now begun preparing their session! Early Access members will soon be able to join using the Early Entry link once it is released. Consider boosting the server to gain access to Early Entry perks and other exclusive benefits.\n\n"
+
+        "<:bluereply:1512360163649126530> Please remain patient while the host completes setup and final preparations before opening the session to participants."
+    ),
+    color=EMBED_COLOR
+)
+
+embed.set_thumbnail(
+    url=host.display_avatar.url
+)
+
+embed.set_footer(
+    text="Cees Rensselaer County Nation 💎",
+    icon_url="https://cdn.discordapp.com/icons/1497481852678832158/fbd6f1b95a93c5efdb00e21365bda256.webp?size=1536"
+)
+
+await channel.send(
+    embed=embed
+)
+
+del STARTUP_TRACKER[
+    payload.message_id
+]
+```
+
 
 bot.run(TOKEN)
