@@ -1220,10 +1220,6 @@ async def startup(
         color=EMBED_COLOR
     )
 
-    embed.set_thumbnail(
-        url=interaction.user.display_avatar.url
-    )
-
     embed.set_image(
         url="https://cdn.discordapp.com/attachments/1512970170363150457/1512997548867059712/CR_2.gif?ex=6a262045&is=6a24cec5&hm=a8cc5941d7d59064cb969ab66ce451738f13f3fd49646cbdc2684aba89df841e"
     )
@@ -1234,7 +1230,7 @@ async def startup(
     )
 
     await interaction.response.send_message(
-        "@everyone",
+        content="@everyone",
         embed=embed
     )
 
@@ -1261,7 +1257,11 @@ async def on_raw_reaction_add(payload):
     if payload.user_id == bot.user.id:
         return
 
-    if payload.message_id not in STARTUP_TRACKER:
+    data = STARTUP_TRACKER.get(
+        payload.message_id
+    )
+
+    if data is None:
         return
 
     channel = bot.get_channel(
@@ -1269,27 +1269,34 @@ async def on_raw_reaction_add(payload):
     )
 
     if channel is None:
+        channel = await bot.fetch_channel(
+            payload.channel_id
+        )
+
+    try:
+        message = await channel.fetch_message(
+            payload.message_id
+        )
+    except:
         return
-
-    message = await channel.fetch_message(
-        payload.message_id
-    )
-
-    data = STARTUP_TRACKER[
-        payload.message_id
-    ]
 
     reaction_count = 0
 
     for reaction in message.reactions:
 
-        if getattr(
+        emoji_id = getattr(
             reaction.emoji,
             "id",
             None
-        ) == 1512942726499274752:
+        )
 
-            reaction_count = reaction.count
+        if emoji_id == 1512942726499274752:
+
+            reaction_count = max(
+                0,
+                reaction.count - 1
+            )
+
             break
 
     if reaction_count < data["required"]:
@@ -1300,7 +1307,12 @@ async def on_raw_reaction_add(payload):
     )
 
     if host is None:
-        return
+        try:
+            host = await message.guild.fetch_member(
+                data["host"]
+            )
+        except:
+            return
 
     embed = discord.Embed(
         title="Cees Rensselaer County Nation — __Server Setup:__",
@@ -1325,8 +1337,9 @@ async def on_raw_reaction_add(payload):
         embed=embed
     )
 
-    del STARTUP_TRACKER[
-        payload.message_id
-    ]
+    STARTUP_TRACKER.pop(
+        payload.message_id,
+        None
+    )
 
 bot.run(TOKEN)
