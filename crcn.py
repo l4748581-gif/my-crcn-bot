@@ -1316,5 +1316,4 @@ del STARTUP_TRACKER[
 ]
 ```
 
-
 bot.run(TOKEN)
