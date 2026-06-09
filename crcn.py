@@ -1215,7 +1215,7 @@ async def startup(
 
             "<:bluearrow:1512942871492427917> We ask that all members remain patient while staff complete setup. A significant amount of preparation goes into each session to provide an organized and enjoyable roleplay experience for everyone involved.\n\n"
 
-            f"<:bluearrow1:1512942887569195058> The session will begin once we reach {required_reactions} reactions. Upon meeting this requirement, early access information will be released and the host will continue with server release."
+            f"<:bluearrow1:1512942887569195058> The session will begin once we reach ``{required_reactions}+`` reactions. Upon meeting this requirement, early access information will be released and the host will continue with server release."
         ),
         color=EMBED_COLOR
     )
