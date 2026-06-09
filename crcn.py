@@ -1191,7 +1191,7 @@ async def purge(ctx, amount: int):
     description="Start a server startup."
 )
 @app_commands.describe(
-    required_reactions="Reaction goal required to continue setup"
+    reactions="Reaction goal required to continue setup"
 )
 async def startup(
     interaction: discord.Interaction,
@@ -1229,13 +1229,13 @@ async def startup(
         icon_url="https://cdn.discordapp.com/icons/1497481852678832158/fbd6f1b95a93c5efdb00e21365bda256.webp?size=1536"
     )
 
-    await interaction.response.send_message(
+    await interaction.response.defer(ephemeral=True)
+
+    message = await interaction.channel.send(
         content="@everyone",
         embed=embed,
         allowed_mentions=discord.AllowedMentions(everyone=True)
     )
-
-    message = await interaction.original_response()
 
     confirm_embed = discord.Embed(
         description="Startup Sent.",
@@ -1257,12 +1257,10 @@ async def startup(
         )
 
     STARTUP_TRACKER[message.id] = {
-        "required": required_reactions,
+        "required": reactions,
         "host": interaction.user.id
     }
-
-
-@bot.event
+    @bot.event
 async def on_raw_reaction_add(payload):
 
     if payload.user_id == bot.user.id:
