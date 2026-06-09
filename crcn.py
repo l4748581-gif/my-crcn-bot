@@ -1191,7 +1191,7 @@ async def purge(ctx, amount: int):
     description="Start a server startup."
 )
 @app_commands.describe(
-    reactions="Reaction goal required to continue setup"
+    required_reactions="Reaction goal required to continue setup"
 )
 async def startup(
     interaction: discord.Interaction,
@@ -1257,7 +1257,7 @@ async def startup(
         )
 
     STARTUP_TRACKER[message.id] = {
-        "required": reactions,
+        "required": required_reactions,
         "host": interaction.user.id
     }
 
