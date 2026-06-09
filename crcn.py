@@ -1229,7 +1229,7 @@ async def startup(
         icon_url="https://cdn.discordapp.com/icons/1497481852678832158/fbd6f1b95a93c5efdb00e21365bda256.webp?size=1536"
     )
 
-await interaction.response.send_message(
+    await interaction.response.send_message(
         content="@everyone",
         embed=embed,
         allowed_mentions=discord.AllowedMentions(everyone=True)
