@@ -1257,7 +1257,7 @@ async def startup(
         )
 
     STARTUP_TRACKER[message.id] = {
-        "required": required_reactions,
+        "required": reactions,
         "host": interaction.user.id
     }
 
