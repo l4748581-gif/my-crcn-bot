@@ -1257,12 +1257,13 @@ async def startup(
         )
 
     STARTUP_TRACKER[message.id] = {
-        "required": reactions,
+        "required": required_reactions,
         "host": interaction.user.id
     }
-    @bot.event
-async def on_raw_reaction_add(payload):
 
+
+@bot.event
+async def on_raw_reaction_add(payload):
     if payload.user_id == bot.user.id:
         return
 
