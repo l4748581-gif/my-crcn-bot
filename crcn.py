@@ -1248,7 +1248,7 @@ await interaction.followup.send(
     ephemeral=True
 )
 
-    emoji = bot.get_emoji(
+emoji = bot.get_emoji(
         1512942726499274752
     )
 
