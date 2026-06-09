@@ -1230,11 +1230,23 @@ async def startup(
     )
 
     await interaction.response.send_message(
-        content="@everyone",
-        embed=embed
-    )
+    content="@everyone",
+    embed=embed,
+    allowed_mentions=discord.AllowedMentions(everyone=True)
+)
 
-    message = await interaction.original_response()
+message = await interaction.original_response()
+
+# Ephemeral confirmation embed
+confirm_embed = discord.Embed(
+    description="Startup Sent.",
+    color=EMBED_COLOR
+)
+
+await interaction.followup.send(
+    embed=confirm_embed,
+    ephemeral=True
+)
 
     emoji = bot.get_emoji(
         1512942726499274752
