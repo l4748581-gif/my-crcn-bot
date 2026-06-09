@@ -1211,11 +1211,11 @@ async def startup(
     embed = discord.Embed(
         title="Cees Rensselaer County Nation — __Server Startup:__",
         description=(
-          " <:bluedot:1512943229216227449> {interaction.user.mention} is hosting a server! Before joining, please ensure your privacy settings are configured to \"__Everyone__\" so that invitations can be delivered if needed. By participating in this server, you acknowledge that you have read and agree to follow all server regulations. A follow-up notification will be sent by the host once the session is setup.\n\n"
+            f"<:bluedot:1512943229216227449> {interaction.user.mention} is hosting a server! Before joining, please ensure your privacy settings are configured to \"__Everyone__\" so that invitations can be delivered if needed. By participating in this server, you acknowledge that you have read and agree to follow all server regulations. A follow-up notification will be sent by the host once the session is setup.\n\n"
 
             "<:bluearrow:1512942871492427917> We ask that all members remain patient while staff complete setup. A significant amount of preparation goes into each session to provide an organized and enjoyable roleplay experience for everyone involved.\n\n"
 
-            f"<:bluearrow1:1512942887569195058> The session will begin once we reach ({required_reactions}) reactions. Upon meeting this requirement, early access information will be released and the host will continue with server release."
+            f"<:bluearrow1:1512942887569195058> The session will begin once we reach {required_reactions} reactions. Upon meeting this requirement, early access information will be released and the host will continue with server release."
         ),
         color=EMBED_COLOR
     )
@@ -1269,9 +1269,12 @@ async def on_raw_reaction_add(payload):
     )
 
     if channel is None:
-        channel = await bot.fetch_channel(
-            payload.channel_id
-        )
+        try:
+            channel = await bot.fetch_channel(
+                payload.channel_id
+            )
+        except:
+            return
 
     try:
         message = await channel.fetch_message(
