@@ -10,9 +10,10 @@ import time
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 
-EMBED_COLOR = 0x89e6ff
-STAFF_ROLE_ID = 1503903256076877945
-STARTUP_TRACKER = {}
+EMBED_COLOR = 0xF2D096
+FOOTER_TEXT = "Cees Rensselaer County Nation™"
+FOOTER_ICON = "https://cdn.discordapp.com/icons/1497481852678832158/c754ad9d295cc7febb5939bb51f4c78b.webp?size=1536"
+STAFF_ROLE = 1503903256076877945
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -1186,173 +1187,49 @@ async def purge(ctx, amount: int):
     await asyncio.sleep(5)
     await confirmation.delete()
 
-@bot.tree.command(
-    name="startup",
-    description="Start a server startup."
-)
-@app_commands.describe(
-    required_reactions="Reaction goal required to continue setup"
-)
-async def startup(
-    interaction: discord.Interaction,
-    required_reactions: int
-):
-
-    role = interaction.guild.get_role(
-        STAFF_ROLE_ID
-    )
-
-    if role not in interaction.user.roles:
-        return await interaction.response.send_message(
-            "You do not have permission to use this command.",
-            ephemeral=True
-        )
-
-    embed = discord.Embed(
-        title="Cees Rensselaer County Nation — __Server Startup:__",
-        description=(
-            f"<:bluedot:1512943229216227449> {interaction.user.mention} is hosting a server! Before joining, please ensure your privacy settings are configured to \"__Everyone__\" so that invitations can be delivered if needed. By participating in this server, you acknowledge that you have read and agree to follow all server regulations. A follow-up notification will be sent by the host once the session is setup.\n\n"
-
-            "<:bluearrow:1512942871492427917> We ask that all members remain patient while staff complete setup. A significant amount of preparation goes into each session to provide an organized and enjoyable roleplay experience for everyone involved.\n\n"
-
-            f"<:bluearrow1:1512942887569195058> The session will begin once we reach ``{required_reactions}+`` reactions. Upon meeting this requirement, early access information will be released and the host will continue with server release."
-        ),
-        color=EMBED_COLOR
-    )
-
-    embed.set_image(
-        url="https://cdn.discordapp.com/attachments/1512970170363150457/1512997548867059712/CR_2.gif?ex=6a262045&is=6a24cec5&hm=a8cc5941d7d59064cb969ab66ce451738f13f3fd49646cbdc2684aba89df841e"
-    )
-
-    embed.set_footer(
-        text="Cees Rensselaer County Nation 💎",
-        icon_url="https://cdn.discordapp.com/icons/1497481852678832158/fbd6f1b95a93c5efdb00e21365bda256.webp?size=1536"
-    )
-
+@bot.tree.command(name="startup", description="Send a server launch announcement.")
+@app_commands.describe(reactions="The number of reactions needed to begin the session")
+async def startup(interaction: discord.Interaction, reactions: int):
     await interaction.response.defer(ephemeral=True)
 
-    message = await interaction.channel.send(
-        content="@everyone",
-        embed=embed,
-        allowed_mentions=discord.AllowedMentions(everyone=True)
-    )
-
-    confirm_embed = discord.Embed(
-        description="Startup Sent.",
-        color=EMBED_COLOR
-    )
-
-    await interaction.followup.send(
-        embed=confirm_embed,
-        ephemeral=True
-    )
-
-    emoji = bot.get_emoji(
-        1512942726499274752
-    )
-
-    if emoji:
-        await message.add_reaction(
-            emoji
-        )
-
-    STARTUP_TRACKER[message.id] = {
-        "required": required_reactions,
-        "host": interaction.user.id
-    }
-
-
-@bot.event
-async def on_raw_reaction_add(payload):
-    if payload.user_id == bot.user.id:
-        return
-
-    data = STARTUP_TRACKER.get(
-        payload.message_id
-    )
-
-    if data is None:
-        return
-
-    channel = bot.get_channel(
-        payload.channel_id
-    )
-
-    if channel is None:
-        try:
-            channel = await bot.fetch_channel(
-                payload.channel_id
-            )
-        except:
-            return
-
-    try:
-        message = await channel.fetch_message(
-            payload.message_id
-        )
-    except:
-        return
-
-    reaction_count = 0
-
-    for reaction in message.reactions:
-
-        emoji_id = getattr(
-            reaction.emoji,
-            "id",
-            None
-        )
-
-        if emoji_id == 1512942726499274752:
-
-            reaction_count = max(
-                0,
-                reaction.count - 1
-            )
-
-            break
-
-    if reaction_count < data["required"]:
-        return
-
-    host = message.guild.get_member(
-        data["host"]
-    )
-
-    if host is None:
-        try:
-            host = await message.guild.fetch_member(
-                data["host"]
-            )
-        except:
-            return
-
-    embed = discord.Embed(
-        title="Cees Rensselaer County Nation — __Server Setup:__",
+    launch_embed = discord.Embed(
+        title="<a:blue_heartballoons:1515000669726314578> Cees Rensselaaer County Nation - Server Launch <a:blue_heartballoons:1515000669726314578>",
         description=(
-            f"<:bluedot:1512943229216227449> {host.mention} has now begun preparing their session! Early Access members will soon be able to join using the Early Entry link once it is released. Consider boosting the server to gain access to Early Entry perks and other exclusive benefits.\n\n"
-
-            "<:bluearrow1:1512942887569195058> Please remain patient while the host completes setup and final preparations before opening the session to participants."
+            f"<:bluedot:1515001393675632793> **{interaction.user.mention} is launching a server!** Before joining, please ensure your privacy settings are configured to \"Everyone\" so that invitations can be sent if needed. "
+            f"By participating in this session, you acknowledge that you have read and agree to follow all server regulations. "
+            f"A follow-up notification will be sent by the host once the session is released.\n\n"
+            f"<:bluearrow:1515000950371123384> We ask that all members remain patient while staff complete setup. "
+            f"A significant amount of preparation goes into each session to provide an organized and enjoyable roleplay experience for everyone involved.\n\n"
+            f"<:bluearrow1:1515000970445062244> The session will begin once we reach **{reactions}+** reactions. "
+            f"Upon meeting this requirement, early access information will be released and the host will continue with releasing."
         ),
         color=EMBED_COLOR
     )
+    launch_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
 
-    embed.set_thumbnail(
-        url=host.display_avatar.url
-    )
+    msg = await interaction.channel.send(embed=launch_embed)
 
-    embed.set_footer(
-        text="Cees Rensselaer County Nation 💎",
-        icon_url="https://cdn.discordapp.com/icons/1497481852678832158/fbd6f1b95a93c5efdb00e21365bda256.webp?size=1536"
-    )
+    def check(reaction, user):
+        return reaction.message.id == msg.id and not user.bot
 
-    await channel.send(
-        embed=embed
-    )
+    while True:
+        reaction, user = await bot.wait_for("reaction_add", check=check)
+        msg = await interaction.channel.fetch_message(msg.id)
+        total = sum(r.count - 1 for r in msg.reactions)
+        if total >= reactions:
+            break
 
-    STARTUP_TRACKER.pop(
-        payload.message_id,
-        None
+    setup_embed = discord.Embed(
+        title="<a:blue_heartballoons:1515000669726314578> Cees Rensselaer County Nation - Server Setup <a:blue_heartballoons:1515000669726314578>",
+        description=(
+            f"<:bluedot:1515001393675632793> **{interaction.user.mention} has started preparing their session!** Early Access members will soon be able to join using the Early Entry link once it is released. "
+            f"Consider boosting the server to gain access to Early Entry perks and other exclusive benefits.\n\n"
+            f"<:bluearrow:1515000950371123384> Please remain patient while the host completes setup and final preparations before releasing the session to participants."
+        ),
+        color=EMBED_COLOR
     )
+    setup_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+
+    await interaction.channel.send(embed=setup_embed)
 
 bot.run(TOKEN)
