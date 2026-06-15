@@ -8,6 +8,7 @@ FOOTER_TEXT = "Cees Rensselaer County Nation™"
 FOOTER_ICON = "https://cdn.discordapp.com/icons/1497481852678832158/ab48dbd460758c87d47fb069cbfbc3e1.webp?size=1280"
 STAFF_ROLE = 1503903256076877945
 CIVILIAN_ROLE = 1503604680121647214
+GROUP_REQUIRED_ROLE = 1512965724329742487
 
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix="!", intents=intents)
@@ -154,9 +155,9 @@ async def release(
         return
 
     # Session link validation
-    if not session_link.startswith("https://www.roblox.com/share"):
+    if not session_link.startswith(("https://roblox.com", "https://www.roblox.com")):
         error_embed = discord.Embed(
-            description="Invalid session link. The link must start with `https://www.roblox.com/share`.",
+            description="Invalid session link. The link must start with `https://roblox.com`.",
             color=EMBED_COLOR
         )
         error_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
@@ -190,7 +191,18 @@ async def release(
 
             @discord.ui.button(label="Session Link", style=discord.ButtonStyle.secondary)
             async def session_link_button(self, button_interaction: discord.Interaction, button: discord.ui.Button):
-                # Check if user reacted to startup message
+                # Group role check first
+                if any(role.id == GROUP_REQUIRED_ROLE for role in button_interaction.user.roles):
+                    group_embed = discord.Embed(
+                        title="Group Entrance Required!",
+                        description="You must join the [ROBLOX Group](https://www.roblox.com/share/g/871056823) then submit a group request within #group-entrance.",
+                        color=EMBED_COLOR
+                    )
+                    group_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+                    await button_interaction.response.send_message(embed=group_embed, ephemeral=True)
+                    return
+
+                # Then reaction check
                 reacted = False
                 startup_msg_fresh = await button_interaction.channel.fetch_message(startup_msg.id)
                 for r in startup_msg_fresh.reactions:
