@@ -1,6 +1,6 @@
-EMBED_COLOR = 0xF2D096
+EMBED_COLOR = 0x5f8575
 FOOTER_TEXT = "Cees Rensselaer County Nation™"
-FOOTER_ICON = "https://cdn.discordapp.com/icons/1497481852678832158/c754ad9d295cc7febb5939bb51f4c78b.webp?size=1536"
+FOOTER_ICON = "https://cdn.discordapp.com/icons/1497481852678832158/ab48dbd460758c87d47fb069cbfbc3e1.webp?size=1280"
 STAFF_ROLE = 1503903256076877945
 CIVILIAN_ROLE = 1503604680121647214
 
@@ -8,21 +8,20 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-
-@bot.tree.command(name="startup", description="Send a server launch announcement.")
+@bot.tree.command(name="startup", description="Start a Roleplay Session!")
 @app_commands.describe(reactions="The number of reactions needed to begin the session")
 async def startup(interaction: discord.Interaction, reactions: int):
     await interaction.response.defer(ephemeral=True)
 
     launch_embed = discord.Embed(
-        title="<a:blue_heartballoons:1515000669726314578> Cees Rensselaaer County Nation - Server Launch <a:blue_heartballoons:1515000669726314578>",
+        title="<a:green_butterflies2:1515944559551451208> Cees Rensselaaer County Nation - Roleplay Startup <a:green_butterflies2:1515944559551451208>",
         description=(
-            f"<:bluedot:1515001393675632793> **{interaction.user.mention} is launching a server!** Before joining, please ensure your privacy settings are configured to \"Everyone\" so that invitations can be sent if needed. "
+            f"<:green_dot:1515944734017978409> **{interaction.user.mention} is hosting a session!** Before joining, please ensure your privacy settings are configured to \"Everyone\" so that invitations can be sent if needed. "
             f"By participating in this session, you acknowledge that you have read and agree to follow all server regulations. "
             f"A follow-up notification will be sent by the host once the session is released.\n\n"
-            f"<:bluearrow:1515000950371123384> We ask that all members remain patient while staff complete setup. "
+            f"<:green_arrow2:1515944486453383219> We ask that all members remain patient while staff complete setup. "
             f"A significant amount of preparation goes into each session to provide an organized and enjoyable roleplay experience for everyone involved.\n\n"
-            f"<:bluearrow1:1515000970445062244> The session will begin once we reach **{reactions}+** reactions. "
+            f"<:green_reply1:1516105094129647668> The session will begin once we reach **{reactions}+** reactions. "
             f"Upon meeting this requirement, early access information will be released and the host will continue with releasing."
         ),
         color=EMBED_COLOR
@@ -57,14 +56,15 @@ async def startup(interaction: discord.Interaction, reactions: int):
         break
 
     setup_embed = discord.Embed(
-        title="<a:blue_heartballoons:1515000669726314578> Cees Rensselaer County Nation - Server Setup <a:blue_heartballoons:1515000669726314578>",
+        title="<a:green_butterflies2:1515944559551451208> Cees Rensselaer County Nation - Roleplay Setup <a:green_butterflies2:1515944559551451208>",
         description=(
-            f"<:bluedot:1515001393675632793> **{interaction.user.mention} has started preparing their session!** Early Access members will soon be able to join using the Early Entry link once it is released. "
+            f"<:green_dot:1515944734017978409> **{interaction.user.mention} has started preparing their session!** Early Access members will soon be able to join using the Early Entry link once it is released. "
             f"Consider boosting the server to gain access to Early Entry perks and other exclusive benefits.\n\n"
-            f"<:bluearrow:1515000950371123384> Please remain patient while the host completes setup and final preparations before releasing the session to participants."
+            f"<:green_reply1:1516105094129647668> Please remain patient while the host completes setup and final preparations before releasing the session to participants."
         ),
         color=EMBED_COLOR
     )
     setup_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+    setup_embed.set_thumbnail(url=interaction.user.display_avatar.url)
 
     await interaction.channel.send(embed=setup_embed)
