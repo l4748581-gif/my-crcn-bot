@@ -154,9 +154,9 @@ async def release(
         return
 
     # Session link validation
-    if not session_link.startswith("https://roblox.com"):
+    if not session_link.startswith("https://www.roblox.com/share"):
         error_embed = discord.Embed(
-            description="Invalid session link. The link must start with `https://roblox.com`.",
+            description="Invalid session link. The link must start with `https://www.roblox.com/share`.",
             color=EMBED_COLOR
         )
         error_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
