@@ -47,7 +47,7 @@ async def startup(interaction: discord.Interaction, reactions: int):
 
         startup_messages[interaction.channel.id] = msg
 
-        await msg.add_reaction("<:green_hearteyes:1515944954910871655>")
+        await msg.add_reaction("💎")
 
         success_embed = discord.Embed(
             description="Command was processed successfully.",
@@ -67,7 +67,7 @@ async def startup(interaction: discord.Interaction, reactions: int):
             reaction, user = await bot.wait_for("reaction_add", check=check)
             msg = await interaction.channel.fetch_message(msg.id)
             for r in msg.reactions:
-                if str(r.emoji) == "<:green_hearteyes:1515944954910871655>":
+                if str(r.emoji) == "💎":
                     total = r.count - 1
                     if total >= reactions:
                         break
