@@ -13,7 +13,6 @@ GROUP_REQUIRED_ROLE = 1512965724329742487
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# Tracks startup message per channel: {channel_id: message}
 startup_messages = {}
 
 @bot.event
@@ -31,9 +30,9 @@ async def startup(interaction: discord.Interaction, reactions: int):
         launch_embed = discord.Embed(
             title="> :Valley_blinkingstars: Nation, Roleplay Startup :Valley_blinkingstars:",
             description=(
-                f"<:Valley_dot:1518254785164214494>  {interaction.user.mention} is **starting a session!** Prior to joining, we highly encourage you to __register your vehicle(s)__ and __review the information in <#1512946599821574296> __including the __Banned Vehicles List__.
-                f"You will receive another notification from the host when they have released their session. 
-                f"The session will commence when this message reaches ``00`` reactions."
+                f"<:Valley_dot:1518254785164214494>  {interaction.user.mention} is **starting a session!** Prior to joining, we highly encourage you to __register your vehicle(s)__ and __review the information in <#1512946599821574296>__ including the __Banned Vehicles List__.\n"
+                f"You will receive another notification from the host when they have released their session.\n"
+                f"The session will commence when this message reaches ``{reactions}`` reactions."
             ),
             color=EMBED_COLOR
         )
@@ -59,16 +58,16 @@ async def startup(interaction: discord.Interaction, reactions: int):
         def check(reaction, user):
             return (
                 reaction.message.id == msg.id
-                and str(reaction.emoji) == "<:green_hearteyes:1515944954910871655>"
+                and str(reaction.emoji) == "💎"  # Fixed: match the actual reaction
                 and not user.bot
             )
 
         while True:
             reaction, user = await bot.wait_for("reaction_add", check=check)
-            msg = await interaction.channel.fetch_message(msg.id)
-            for r in msg.reactions:
+            fresh_msg = await interaction.channel.fetch_message(msg.id)
+            for r in fresh_msg.reactions:
                 if str(r.emoji) == "💎":
-                    total = r.count - 1
+                    total = r.count - 1  # subtract bot's own reaction
                     if total >= reactions:
                         break
             else:
@@ -87,7 +86,8 @@ async def startup(interaction: discord.Interaction, reactions: int):
 
         await interaction.channel.send(embed=setup_embed)
 
-    except Exception:
+    except Exception as e:
+        print(f"[startup error] {e}")
         denied_embed = discord.Embed(
             description="Command was denied.",
             color=EMBED_COLOR
@@ -128,7 +128,6 @@ async def release(
 ):
     await interaction.response.defer(ephemeral=True)
 
-    # Staff check
     if not any(role.id == STAFF_ROLE for role in interaction.user.roles):
         error_embed = discord.Embed(
             description="You do not have permission to use this command.",
@@ -138,7 +137,6 @@ async def release(
         await interaction.followup.send(embed=error_embed, ephemeral=True)
         return
 
-    # Startup check
     if interaction.channel.id not in startup_messages:
         error_embed = discord.Embed(
             description="A startup must be sent in this channel before releasing.",
@@ -148,7 +146,6 @@ async def release(
         await interaction.followup.send(embed=error_embed, ephemeral=True)
         return
 
-    # Session link validation
     if not session_link.startswith(("https://roblox.com", "https://www.roblox.com")):
         error_embed = discord.Embed(
             description="Invalid session link. The link must start with `https://roblox.com`.",
@@ -185,7 +182,6 @@ async def release(
 
             @discord.ui.button(label="Session Link", style=discord.ButtonStyle.secondary)
             async def session_link_button(self, button_interaction: discord.Interaction, button: discord.ui.Button):
-                # Group role check first
                 if any(role.id == GROUP_REQUIRED_ROLE for role in button_interaction.user.roles):
                     group_embed = discord.Embed(
                         title="Group Entrance Required!",
@@ -196,11 +192,10 @@ async def release(
                     await button_interaction.response.send_message(embed=group_embed, ephemeral=True)
                     return
 
-                # Then reaction check
                 reacted = False
                 startup_msg_fresh = await button_interaction.channel.fetch_message(startup_msg.id)
                 for r in startup_msg_fresh.reactions:
-                    if str(r.emoji) == "<:green_hearteyes:1515944954910871655>":
+                    if str(r.emoji) == "💎":
                         async for user in r.users():
                             if user.id == button_interaction.user.id:
                                 reacted = True
@@ -235,7 +230,8 @@ async def release(
         success_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
         await interaction.followup.send(embed=success_embed, ephemeral=True)
 
-    except Exception:
+    except Exception as e:
+        print(f"[release error] {e}")
         denied_embed = discord.Embed(
             description="Command was denied.",
             color=EMBED_COLOR
