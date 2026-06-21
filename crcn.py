@@ -28,11 +28,10 @@ async def startup(interaction: discord.Interaction, reactions: int):
 
     try:
         launch_embed = discord.Embed(
-            title="> :Valley_blinkingstars: Nation, Roleplay Startup :Valley_blinkingstars:",
+            title="> <a:Valley_blinkingstars:1518254538543468685> Nation, Roleplay Startup <a:Valley_blinkingstars:1518254538543468685>",
             description=(
-                f"<:Valley_dot:1518254785164214494>  {interaction.user.mention} is **starting a session!** Prior to joining, we highly encourage you to __register your vehicle(s)__ and __review the information in <#1512946599821574296>__ including the __Banned Vehicles List__.\n"
-                f"You will receive another notification from the host when they have released their session.\n"
-                f"The session will commence when this message reaches ``{reactions}`` reactions."
+                f"<:Valley_dot:1518254785164214494>  {interaction.user.mention} is **starting a session!** Prior to joining, we highly encourage you to __register your vehicle(s)__ and __review the information in <#1512946599821574296>__ including the __Banned Vehicles List__. You will receive another notification from the host when they have released their session."\n\n
+                f"The session will commence when this message reaches ``{reactions}+`` reactions."
             ),
             color=EMBED_COLOR
         )
@@ -75,7 +74,7 @@ async def startup(interaction: discord.Interaction, reactions: int):
             break
 
         setup_embed = discord.Embed(
-            title="> :Valley_blinkingstars: Nation, __Roleplay Setup__ :Valley_blinkingstars:",
+            title="> <a:Valley_blinkingstars:1518254538543468685> Nation, __Roleplay Setup__ <a:Valley_blinkingstars:1518254538543468685>",
             description=(
                 f"<:Valley_dot:1518254785164214494> {interaction.user.mention} is now **setting up** their Roleplay Session. During this time, please do __not__ ping the host or it will lead to moderation actions."
             ),
