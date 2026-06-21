@@ -30,7 +30,7 @@ async def startup(interaction: discord.Interaction, reactions: int):
         launch_embed = discord.Embed(
             title="> <a:Valley_blinkingstars:1518254538543468685> Nation, Roleplay Startup <a:Valley_blinkingstars:1518254538543468685>",
             description=(
-                f"<:Valley_dot:1518254785164214494>  {interaction.user.mention} is **starting a session!** Prior to joining, we highly encourage you to __register your vehicle(s)__ and __review the information in <#1512946599821574296>__ including the __Banned Vehicles List__. You will receive another notification from the host when they have released their session."\n\n
+                f"<:Valley_dot:1518254785164214494>  {interaction.user.mention} is **starting a session!** Prior to joining, we highly encourage you to __register your vehicle(s)__ and __review the information in <#1512946599821574296>__ including the __Banned Vehicles List__. You will receive another notification from the host when they have released their session.\n\n"
                 f"The session will commence when this message reaches ``{reactions}+`` reactions."
             ),
             color=EMBED_COLOR
@@ -57,7 +57,7 @@ async def startup(interaction: discord.Interaction, reactions: int):
         def check(reaction, user):
             return (
                 reaction.message.id == msg.id
-                and str(reaction.emoji) == "💎"  # Fixed: match the actual reaction
+                and str(reaction.emoji) == "💎"
                 and not user.bot
             )
 
@@ -66,7 +66,7 @@ async def startup(interaction: discord.Interaction, reactions: int):
             fresh_msg = await interaction.channel.fetch_message(msg.id)
             for r in fresh_msg.reactions:
                 if str(r.emoji) == "💎":
-                    total = r.count - 1  # subtract bot's own reaction
+                    total = r.count - 1
                     if total >= reactions:
                         break
             else:
