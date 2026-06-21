@@ -3,9 +3,9 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-EMBED_COLOR = 0x5f8575
-FOOTER_TEXT = "Cees Rensselaer County Nation™"
-FOOTER_ICON = "https://cdn.discordapp.com/icons/1497481852678832158/ab48dbd460758c87d47fb069cbfbc3e1.webp?size=1280"
+EMBED_COLOR = 0x1E90FF
+FOOTER_TEXT = "Cees Rensselaer County Nation 💎"
+FOOTER_ICON = "https://cdn.discordapp.com/attachments/1496275065111580862/1518219390825271366/RC_20260621_064139_0000.png?ex=6a391f7d&is=6a37cdfd&hm=7f66fb7bf41d901ab826b925917a653d5b00c35301de518c77ca112cf1004e1e"
 STAFF_ROLE = 1503903256076877945
 CIVILIAN_ROLE = 1503604680121647214
 GROUP_REQUIRED_ROLE = 1512965724329742487
@@ -29,20 +29,16 @@ async def startup(interaction: discord.Interaction, reactions: int):
 
     try:
         launch_embed = discord.Embed(
-            title="<a:green_butterflies2:1515944559551451208> Cees Rensselaaer County Nation - Roleplay Startup <a:green_butterflies2:1515944559551451208>",
+            title="> :Valley_blinkingstars: Nation, Roleplay Startup :Valley_blinkingstars:",
             description=(
-                f"<:green_dot:1515944734017978409> **{interaction.user.mention} is hosting a session!** Before joining, please ensure your privacy settings are configured to \"Everyone\" so that invitations can be sent if needed. "
-                f"By participating in this session, you acknowledge that you have read and agree to follow all server regulations. "
-                f"A follow-up notification will be sent by the host once the session is released.\n\n"
-                f"<:green_arrow2:1515944486453383219> We ask that all members remain patient while staff complete setup. "
-                f"A significant amount of preparation goes into each session to provide an organized and enjoyable roleplay experience for everyone involved.\n\n"
-                f"<:green_reply1:1516105094129647668> The session will begin once we reach **{reactions}+** reactions. "
-                f"Upon meeting this requirement, early access information will be released and the host will continue with releasing."
+                f"<:Valley_dot:1518254785164214494>  {interaction.user.mention} is **starting a session!** Prior to joining, we highly encourage you to __register your vehicle(s)__ and __review the information in <#1512946599821574296> __including the __Banned Vehicles List__.
+                f"You will receive another notification from the host when they have released their session. 
+                f"The session will commence when this message reaches ``00`` reactions."
             ),
             color=EMBED_COLOR
         )
         launch_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
-        launch_embed.set_image(url="https://cdn.discordapp.com/attachments/1500685322122694892/1516156503130902528/Copy_of_Information_20260615_140429_0000.png?ex=6a319e47&is=6a304cc7&hm=f1ad2a2240ffc8d5331eb905f212b0d23eb2549e261b446c91fe50a2fc859553")
+        launch_embed.set_image(url="https://cdn.discordapp.com/attachments/1517824626976096266/1518263785562050740/Session_20260621_093800_0000.png?ex=6a3948d6&is=6a37f756&hm=dee73e2f9b2b36a16d0646d1ac4d589f5a303d75696fe246cbe0c6d5e7b95f9a")
 
         msg = await interaction.channel.send(
             content=f"<@&{CIVILIAN_ROLE}>",
@@ -80,11 +76,9 @@ async def startup(interaction: discord.Interaction, reactions: int):
             break
 
         setup_embed = discord.Embed(
-            title="<a:green_butterflies2:1515944559551451208> Cees Rensselaer County Nation - Roleplay Setup <a:green_butterflies2:1515944559551451208>",
+            title="> :Valley_blinkingstars: Nation, __Roleplay Setup__ :Valley_blinkingstars:",
             description=(
-                f"<:green_dot:1515944734017978409> **{interaction.user.mention} has started preparing their session!** Early Access members will soon be able to join using the Early Entry link once it is released. "
-                f"Consider boosting the server to gain access to Early Entry perks and other exclusive benefits.\n\n"
-                f"<:green_reply1:1516105094129647668> Please remain patient while the host completes setup and final preparations before releasing the session to participants."
+                f"<:Valley_dot:1518254785164214494> {interaction.user.mention} is now **setting up** their Roleplay Session. During this time, please do __not__ ping the host or it will lead to moderation actions."
             ),
             color=EMBED_COLOR
         )
