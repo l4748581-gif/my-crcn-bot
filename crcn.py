@@ -31,7 +31,7 @@ async def check_bot_status(interaction: discord.Interaction) -> bool:
             color=EMBED_COLOR
         )
         error_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
-        await interaction.response.send_message(embed=error_embed, ephemeral=True)
+        await interaction.followup.send(embed=error_embed, ephemeral=True)
         return False
     if bot_status["revamp"]:
         error_embed = discord.Embed(
@@ -40,7 +40,7 @@ async def check_bot_status(interaction: discord.Interaction) -> bool:
             color=EMBED_COLOR
         )
         error_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
-        await interaction.response.send_message(embed=error_embed, ephemeral=True)
+        await interaction.followup.send(embed=error_embed, ephemeral=True)
         return False
     return True
 
