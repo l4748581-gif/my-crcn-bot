@@ -3,9 +3,9 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-EMBED_COLOR = 0x1E90FF
-FOOTER_TEXT = "Cees Rensselaer County Nation 💎"
-FOOTER_ICON = "https://cdn.discordapp.com/attachments/1496275065111580862/1518219390825271366/RC_20260621_064139_0000.png?ex=6a391f7d&is=6a37cdfd&hm=7f66fb7bf41d901ab826b925917a653d5b00c35301de518c77ca112cf1004e1e"
+EMBED_COLOR = 0xF8F39C
+FOOTER_TEXT = "Cees Rensselaer County Nation 🌟"
+FOOTER_ICON = "https://cdn.discordapp.com/icons/1497481852678832158/100d02016a6cd52f74f871a3b4c95a13.webp?size=1280"
 STAFF_ROLE = 1503903256076877945
 CIVILIAN_ROLE = 1503604680121647214
 GROUP_REQUIRED_ROLE = 1512965724329742487
@@ -26,17 +26,28 @@ async def on_ready():
 async def startup(interaction: discord.Interaction, reactions: int):
     await interaction.response.defer(ephemeral=True)
 
+    # Staff check
+    if not any(role.id == STAFF_ROLE for role in interaction.user.roles):
+        error_embed = discord.Embed(
+            description="You do not have permission to use this command.",
+            color=EMBED_COLOR
+        )
+        error_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+        await interaction.followup.send(embed=error_embed, ephemeral=True)
+        return
+
     try:
         launch_embed = discord.Embed(
-            title="> <a:Valley_blinkingstars:1518254538543468685> Nation, Roleplay Startup <a:Valley_blinkingstars:1518254538543468685>",
+            title="<:yellow_triostar:1519527667379077120> Nation, **__Session Starting__** <:yellow_triostar:1519527667379077120>",
             description=(
-                f"<:Valley_dot:1518254785164214494>  {interaction.user.mention} is **starting a session!** Prior to joining, we highly encourage you to __register your vehicle(s)__ and __review the information in <#1512946599821574296>__ including the __Banned Vehicles List__. You will receive another notification from the host when they have released their session.\n\n"
-                f"The session will commence when this message reaches ``{reactions}+`` reactions."
+                f"<:yellow_dot:1519436473823269065> {interaction.user.mention} is **hosting a roleplay Session!** Prior to joining, we highly encourage you to familiarize yourself with our **Server Regulations** and **Banned Vehicles List** both listed within the <#1512946599821574296> channel. "
+                f"Ensure you have the correct privacy settings so the host can send manual invites if necessary. You will receive another notification when the session is released.\n\n"
+                f"In order for Early Access to be unlocked, this message must reach **__{reactions}__** reactions."
             ),
             color=EMBED_COLOR
         )
         launch_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
-        launch_embed.set_image(url="https://cdn.discordapp.com/attachments/1517824626976096266/1518263785562050740/Session_20260621_093800_0000.png?ex=6a3948d6&is=6a37f756&hm=dee73e2f9b2b36a16d0646d1ac4d589f5a303d75696fe246cbe0c6d5e7b95f9a")
+        launch_embed.set_image(url="https://cdn.discordapp.com/attachments/1513671644818706472/1519545970613026927/11_20260624_223249_0010.png?ex=6a3e9bb7&is=6a3d4a37&hm=6bd5a23543dd110306b669dc30c4568613ec9d41a143a96e7daaf03e2f980d03&")
 
         msg = await interaction.channel.send(
             content=f"<@&{CIVILIAN_ROLE}>",
@@ -45,7 +56,7 @@ async def startup(interaction: discord.Interaction, reactions: int):
 
         startup_messages[interaction.channel.id] = msg
 
-        await msg.add_reaction("💎")
+        await msg.add_reaction("🌟")
 
         success_embed = discord.Embed(
             description="Command was processed successfully.",
@@ -57,15 +68,15 @@ async def startup(interaction: discord.Interaction, reactions: int):
         def check(reaction, user):
             return (
                 reaction.message.id == msg.id
-                and str(reaction.emoji) == "💎"
+                and str(reaction.emoji) == "🌟"
                 and not user.bot
             )
 
         while True:
             reaction, user = await bot.wait_for("reaction_add", check=check)
-            fresh_msg = await interaction.channel.fetch_message(msg.id)
-            for r in fresh_msg.reactions:
-                if str(r.emoji) == "💎":
+            msg = await interaction.channel.fetch_message(msg.id)
+            for r in msg.reactions:
+                if str(r.emoji) == "🌟":
                     total = r.count - 1
                     if total >= reactions:
                         break
@@ -74,26 +85,25 @@ async def startup(interaction: discord.Interaction, reactions: int):
             break
 
         setup_embed = discord.Embed(
-            title="> <a:Valley_blinkingstars:1518254538543468685> Nation, __Roleplay Setup__ <a:Valley_blinkingstars:1518254538543468685>",
+            title="<:yellow_triostar:1519527667379077120> Nation, **__Session Setup__** <:yellow_triostar:1519527667379077120>",
             description=(
-                f"<:Valley_dot:1518254785164214494> {interaction.user.mention} is now **setting up** their Roleplay Session. During this time, please do __not__ ping the host or it will lead to moderation actions."
+                f"<:yellow_dot:1519436473823269065> {interaction.user.mention} is now **setting up** their Roleplay Session. During this time, please do __not__ ping the host or it will lead to moderation actions."
             ),
             color=EMBED_COLOR
         )
         setup_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+        setup_embed.set_image(url="https://cdn.discordapp.com/attachments/1513671644818706472/1519546154633793657/Roleplay_20260624_223345_0000.png?ex=6a3e9be3&is=6a3d4a63&hm=6e2884a290e9588175d8becb7cb3f1d022c3cca426c8bed419097048d88e72cf")
         setup_embed.set_thumbnail(url=interaction.user.display_avatar.url)
 
         await interaction.channel.send(embed=setup_embed)
 
-    except Exception as e:
-        print(f"[startup error] {e}")
+    except Exception:
         denied_embed = discord.Embed(
             description="Command was denied.",
             color=EMBED_COLOR
         )
         denied_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
         await interaction.followup.send(embed=denied_embed, ephemeral=True)
-
 
 @bot.tree.command(name="release", description="Release a Roleplay Session!")
 @app_commands.describe(
