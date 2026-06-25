@@ -15,6 +15,36 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 startup_messages = {}
 
+bot_status = {
+    "lockdown": False,
+    "revamp": False
+}
+
+
+async def check_bot_status(interaction: discord.Interaction) -> bool:
+    if not interaction.command or interaction.command.name == "update":
+        return True
+    if bot_status["lockdown"]:
+        error_embed = discord.Embed(
+            title="Error",
+            description="<:yellow_bell:1519436277907193976> The bot is currently on **__Lockdown__** and you may __not__ use any commands at this time.",
+            color=EMBED_COLOR
+        )
+        error_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+        await interaction.response.send_message(embed=error_embed, ephemeral=True)
+        return False
+    if bot_status["revamp"]:
+        error_embed = discord.Embed(
+            title="Error",
+            description="<:yellow_bell:1519436277907193976> Commands Disabled, **__Revamp Ongoing.__**",
+            color=EMBED_COLOR
+        )
+        error_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+        await interaction.response.send_message(embed=error_embed, ephemeral=True)
+        return False
+    return True
+
+
 @bot.event
 async def on_ready():
     await bot.tree.sync()
@@ -26,7 +56,9 @@ async def on_ready():
 async def startup(interaction: discord.Interaction, reactions: int):
     await interaction.response.defer(ephemeral=True)
 
-    # Staff check
+    if not await check_bot_status(interaction):
+        return
+
     if not any(role.id == STAFF_ROLE for role in interaction.user.roles):
         error_embed = discord.Embed(
             description="You do not have permission to use this command.",
@@ -105,6 +137,7 @@ async def startup(interaction: discord.Interaction, reactions: int):
         denied_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
         await interaction.followup.send(embed=denied_embed, ephemeral=True)
 
+
 @bot.tree.command(name="release", description="Release a Roleplay Session!")
 @app_commands.describe(
     session_link="The Roblox session link",
@@ -136,6 +169,9 @@ async def release(
     emergency_services: str
 ):
     await interaction.response.defer(ephemeral=True)
+
+    if not await check_bot_status(interaction):
+        return
 
     if not any(role.id == STAFF_ROLE for role in interaction.user.roles):
         error_embed = discord.Embed(
@@ -204,7 +240,7 @@ async def release(
                 reacted = False
                 startup_msg_fresh = await button_interaction.channel.fetch_message(startup_msg.id)
                 for r in startup_msg_fresh.reactions:
-                    if str(r.emoji) == "💎":
+                    if str(r.emoji) == "🌟":
                         async for user in r.users():
                             if user.id == button_interaction.user.id:
                                 reacted = True
@@ -247,6 +283,73 @@ async def release(
         )
         denied_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
         await interaction.followup.send(embed=denied_embed, ephemeral=True)
+
+
+@bot.tree.command(name="update", description="Manage bot lockdown and revamp mode.")
+async def update(interaction: discord.Interaction):
+    if not interaction.user.guild_permissions.administrator:
+        error_embed = discord.Embed(
+            description="You do not have permission to use this command.",
+            color=EMBED_COLOR
+        )
+        error_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+        await interaction.response.send_message(embed=error_embed, ephemeral=True)
+        return
+
+    class UpdateView(discord.ui.View):
+        def __init__(self):
+            super().__init__(timeout=None)
+            self.update_buttons()
+
+        def update_buttons(self):
+            self.clear_items()
+
+            lockdown_label = "Disable Lockdown" if bot_status["lockdown"] else "Enable Lockdown"
+            lockdown_style = discord.ButtonStyle.danger if bot_status["lockdown"] else discord.ButtonStyle.secondary
+            lockdown_btn = discord.ui.Button(label=lockdown_label, style=lockdown_style)
+            lockdown_btn.callback = self.lockdown_callback
+            self.add_item(lockdown_btn)
+
+            revamp_label = "Disable Revamp Mode" if bot_status["revamp"] else "Enable Revamp Mode"
+            revamp_style = discord.ButtonStyle.danger if bot_status["revamp"] else discord.ButtonStyle.secondary
+            revamp_btn = discord.ui.Button(label=revamp_label, style=revamp_style)
+            revamp_btn.callback = self.revamp_callback
+            self.add_item(revamp_btn)
+
+        async def lockdown_callback(self, button_interaction: discord.Interaction):
+            if bot_status["lockdown"]:
+                bot_status["lockdown"] = False
+                desc = "<:yellow_bell:1519436277907193976> Lockdown Disabled."
+            else:
+                bot_status["lockdown"] = True
+                bot_status["revamp"] = False
+                desc = "<:yellow_bell:1519436277907193976> Lockdown Enabled."
+
+            self.update_buttons()
+            status_embed = discord.Embed(description=desc, color=EMBED_COLOR)
+            status_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+            await button_interaction.response.edit_message(embed=status_embed, view=self)
+
+        async def revamp_callback(self, button_interaction: discord.Interaction):
+            if bot_status["revamp"]:
+                bot_status["revamp"] = False
+                desc = "<:yellow_bell:1519436277907193976> Revamp Mode Disabled."
+            else:
+                bot_status["revamp"] = True
+                bot_status["lockdown"] = False
+                desc = "<:yellow_bell:1519436277907193976> Revamp Mode Enabled."
+
+            self.update_buttons()
+            status_embed = discord.Embed(description=desc, color=EMBED_COLOR)
+            status_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+            await button_interaction.response.edit_message(embed=status_embed, view=self)
+
+    initial_embed = discord.Embed(
+        description="Use the buttons below to manage bot status.",
+        color=EMBED_COLOR
+    )
+    initial_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+    await interaction.response.send_message(embed=initial_embed, view=UpdateView(), ephemeral=True)
 
 
 bot.run(os.environ["DISCORD_TOKEN"])
