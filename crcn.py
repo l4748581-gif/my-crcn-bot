@@ -337,5 +337,34 @@ async def update(interaction: discord.Interaction):
     initial_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
     await interaction.response.send_message(embed=initial_embed, view=UpdateView(), ephemeral=True)
 
+@bot.event
+async def on_message(message: discord.Message):
+    if message.author.bot:
+        return
+
+    if "banned" in message.content.lower():
+        banned_embed = discord.Embed(
+            title="**__<:yellow_bell:1519436277907193976>  Banned From a Session? <:yellow_bell:1519436277907193976>__**",
+            description=(
+                "<:yellow_arrow:1519436248920490305> If you were banned from a Session, you'll need to fill out a **Ban Appeal**. "
+                "The ban appeal is in the button below. If you were not banned, kindly disregard this message."
+            ),
+            color=EMBED_COLOR
+        )
+        banned_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+
+        class BanAppealView(discord.ui.View):
+            def __init__(self):
+                super().__init__(timeout=None)
+                self.add_item(discord.ui.Button(
+                    label="Ban Appeal Link",
+                    style=discord.ButtonStyle.link,
+                    url="https://docs.google.com/forms/d/e/1FAIpQLSdxRa3lO57ssTE5qgX912UxMAJVQm2uXGUThJoECSOa4c86CA/viewform?usp=sharing&ouid=114820152348130489079"
+                ))
+
+        await message.channel.send(embed=banned_embed, view=BanAppealView())
+
+    await bot.process_commands(message)
+
 
 bot.run(os.environ["DISCORD_TOKEN"])
