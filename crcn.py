@@ -368,28 +368,28 @@ async def conclude(interaction: discord.Interaction, notes: str = None):
                 super().__init__()
                 self.host = host
 
-            async def on_submit(self, modal_interaction: discord.Interaction):
-                log_channel = bot.get_channel(1511675078528602213)
-                if log_channel:
-                    log_embed = discord.Embed(
-                        description=(
-                            f"**Submitted By:** {modal_interaction.user.mention}\n"
-                            f"**Host:** {self.host.mention}\n"
-                            f"**Rating:** {self.rating.value}\n"
-                            f"**Review:** {self.review.value}\n"
-                            f"-----------"
-                        ),
-                        color=EMBED_COLOR
-                    )
-                    log_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
-                    await log_channel.send(embed=log_embed)
+           async def on_submit(self, modal_interaction: discord.Interaction):
+    log_channel = bot.get_channel(1511675078528602213)
+    if log_channel:
+        log_embed = discord.Embed(
+            title="<:yellow_triostar:1519527667379077120> Nation, **__Session Feedback__** <:yellow_triostar:1519527667379077120>",
+            description=(
+                f"**Submitted By:** {modal_interaction.user.mention}\n"
+                f"**Host:** {self.host.mention}\n"
+                f"**Rating:** {self.rating.value}\n"
+                f"**Review:** {self.review.value}"
+            ),
+            color=EMBED_COLOR
+        )
+        log_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+        await log_channel.send(embed=log_embed)
 
-                confirm_embed = discord.Embed(
-                    description="Thank you for your feedback!",
-                    color=EMBED_COLOR
-                )
-                confirm_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
-                await modal_interaction.response.send_message(embed=confirm_embed, ephemeral=True)
+    confirm_embed = discord.Embed(
+        description="Thank you for your feedback!",
+        color=EMBED_COLOR
+    )
+    confirm_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+    await modal_interaction.response.send_message(embed=confirm_embed, ephemeral=True)
 
         class FeedbackView(discord.ui.View):
             def __init__(self):
