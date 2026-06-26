@@ -9,12 +9,15 @@ FOOTER_ICON = "https://cdn.discordapp.com/icons/1497481852678832158/100d02016a6c
 STAFF_ROLE = 1503903256076877945
 CIVILIAN_ROLE = 1503604680121647214
 GROUP_REQUIRED_ROLE = 1512965724329742487
+FEEDBACK_LOG_CHANNEL = 1511675078528602213
+SESSION_LOG_CHANNEL = 1511679397848027207
 
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix="?", intents=intents)
 
 startup_messages = {}
 release_times = {}
+session_logs = {}  # {user_id: [{"start": datetime, "end": datetime, "duration": str}]}
 
 bot_status = {
     "lockdown": False,
@@ -23,7 +26,7 @@ bot_status = {
 
 
 async def check_bot_status(interaction: discord.Interaction) -> bool:
-    if not interaction.command or interaction.command.name in ("update", "say", "dm", "conclude"):
+    if not interaction.command or interaction.command.name in ("update", "say", "dm", "conclude", "staffprofile"):
         return True
     if bot_status["lockdown"]:
         error_embed = discord.Embed(
@@ -247,7 +250,10 @@ async def release(
         release_embed.set_image(url="https://cdn.discordapp.com/attachments/1513671644818706472/1519545971183194163/12_20260624_223249_0011.png?ex=6a3e9bb7&is=6a3d4a37&hm=02ca764c966e246176a3c4fb988c5dfd0e8591331a9c25950bf1d0feecc1c0c9&")
 
         startup_msg = startup_messages[interaction.channel.id]
-        release_times[interaction.channel.id] = discord.utils.utcnow()
+        release_times[interaction.channel.id] = {
+            "time": discord.utils.utcnow(),
+            "host": interaction.user
+        }
 
         class SessionLinkButton(discord.ui.View):
             def __init__(self):
@@ -327,12 +333,16 @@ async def conclude(interaction: discord.Interaction, notes: str = None):
         return
 
     try:
-        start_time = release_times[interaction.channel.id]
+        release_data = release_times[interaction.channel.id]
+        start_time = release_data["time"]
+        host = release_data["host"]
         end_time = discord.utils.utcnow()
+        duration = end_time - start_time
+        duration_minutes = duration.total_seconds() / 60
         start_str = discord.utils.format_dt(start_time, style="t")
         end_str = discord.utils.format_dt(end_time, style="t")
         notes_str = notes if notes else "No notes provided."
-        host = interaction.user
+        logged = "Yes" if duration_minutes >= 30 else "No"
 
         conclude_embed = discord.Embed(
             title="<:yellow_triostar:1519527667379077120> Nation, **__Conclusion__** <:yellow_triostar:1519527667379077120>",
@@ -351,6 +361,30 @@ async def conclude(interaction: discord.Interaction, notes: str = None):
         conclude_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
         conclude_embed.set_image(url="https://cdn.discordapp.com/attachments/1513671644818706472/1519545972886212658/14_20260624_223249_0013.png?ex=6a3f4477&is=6a3df2f7&hm=6749fb22b31efc39bde3f5d6c2c27c2f0abeb5592eb92c6e6dcee11239059c91&")
 
+        host_id = host.id
+        if host_id not in session_logs:
+            session_logs[host_id] = []
+        session_logs[host_id].append({
+            "start": start_str,
+            "end": end_str,
+            "duration_minutes": duration_minutes
+        })
+
+        log_channel = bot.get_channel(SESSION_LOG_CHANNEL)
+        if log_channel:
+            log_embed = discord.Embed(
+                title="<:yellow_triostar:1519527667379077120> Nation, **__Session Log__** <:yellow_triostar:1519527667379077120>",
+                description=(
+                    f"**Host:** {host.mention}\n"
+                    f"**Start Time:** {start_str}\n"
+                    f"**End Time:** {end_str}\n"
+                    f"**Were Log Entries Logged to Staff Profiles?** {logged}"
+                ),
+                color=EMBED_COLOR
+            )
+            log_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+            await log_channel.send(embed=log_embed)
+
         class FeedbackModal(discord.ui.Modal, title="Session Feedback"):
             rating = discord.ui.TextInput(
                 label="Rate the session (1-5)",
@@ -368,28 +402,28 @@ async def conclude(interaction: discord.Interaction, notes: str = None):
                 super().__init__()
                 self.host = host
 
-           async def on_submit(self, modal_interaction: discord.Interaction):
-    log_channel = bot.get_channel(1511675078528602213)
-    if log_channel:
-        log_embed = discord.Embed(
-            title="<:yellow_triostar:1519527667379077120> Nation, **__Session Feedback__** <:yellow_triostar:1519527667379077120>",
-            description=(
-                f"**Submitted By:** {modal_interaction.user.mention}\n"
-                f"**Host:** {self.host.mention}\n"
-                f"**Rating:** {self.rating.value}\n"
-                f"**Review:** {self.review.value}"
-            ),
-            color=EMBED_COLOR
-        )
-        log_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
-        await log_channel.send(embed=log_embed)
+            async def on_submit(self, modal_interaction: discord.Interaction):
+                log_ch = bot.get_channel(FEEDBACK_LOG_CHANNEL)
+                if log_ch:
+                    log_embed = discord.Embed(
+                        title="<:yellow_triostar:1519527667379077120> Nation, **__Session Feedback__** <:yellow_triostar:1519527667379077120>",
+                        description=(
+                            f"**Submitted By:** {modal_interaction.user.mention}\n"
+                            f"**Host:** {self.host.mention}\n"
+                            f"**Rating:** {self.rating.value}\n"
+                            f"**Review:** {self.review.value}"
+                        ),
+                        color=EMBED_COLOR
+                    )
+                    log_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+                    await log_ch.send(embed=log_embed)
 
-    confirm_embed = discord.Embed(
-        description="Thank you for your feedback!",
-        color=EMBED_COLOR
-    )
-    confirm_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
-    await modal_interaction.response.send_message(embed=confirm_embed, ephemeral=True)
+                confirm_embed = discord.Embed(
+                    description="Thank you for your feedback!",
+                    color=EMBED_COLOR
+                )
+                confirm_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+                await modal_interaction.response.send_message(embed=confirm_embed, ephemeral=True)
 
         class FeedbackView(discord.ui.View):
             def __init__(self):
@@ -419,6 +453,60 @@ async def conclude(interaction: discord.Interaction, notes: str = None):
         )
         denied_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
         await interaction.followup.send(embed=denied_embed, ephemeral=True)
+
+
+@bot.tree.command(name="staffprofile", description="View a staff member's profile.")
+@app_commands.describe(member="The staff member to view (leave empty for yourself)")
+async def staffprofile(interaction: discord.Interaction, member: discord.Member = None):
+    await interaction.response.defer(ephemeral=True)
+
+    target = member or interaction.user
+    logs = session_logs.get(target.id, [])
+    total_sessions = len(logs)
+
+    profile_embed = discord.Embed(
+        title="<:yellow_triostar:1519527667379077120> Nation, **__Staffing Profile__** <:yellow_triostar:1519527667379077120>",
+        description=(
+            f"<:yellow_dualhearts:1519436503217078382> All information about the Staff's Profile is located here.\n\n"
+            f"<:yellow_arrow:1519436248920490305> Roblox User: **{target.display_name}**\n"
+            f"<:yellow_arrow:1519436248920490305> User ID: **{target.id}**\n"
+            f"<:yellow_arrow:1519436248920490305> Total Sessions: **{total_sessions}**"
+        ),
+        color=EMBED_COLOR
+    )
+    profile_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+    profile_embed.set_thumbnail(url=target.display_avatar.url)
+
+    class SessionsView(discord.ui.View):
+        def __init__(self):
+            super().__init__(timeout=None)
+
+        @discord.ui.button(label="Sessions", style=discord.ButtonStyle.secondary)
+        async def sessions_button(self, button_interaction: discord.Interaction, button: discord.ui.Button):
+            if not logs:
+                sessions_embed = discord.Embed(
+                    description=f"**{target.display_name}** has no logged sessions.",
+                    color=EMBED_COLOR
+                )
+                sessions_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+                await button_interaction.response.send_message(embed=sessions_embed, ephemeral=True)
+                return
+
+            desc = ""
+            for i, log in enumerate(logs, 1):
+                desc += f"**Session {i}**\n"
+                desc += f"<:yellow_arrow:1519436248920490305> Start: {log['start']}\n"
+                desc += f"<:yellow_arrow:1519436248920490305> End: {log['end']}\n\n"
+
+            sessions_embed = discord.Embed(
+                title=f"<:yellow_triostar:1519527667379077120> {target.display_name}'s Sessions <:yellow_triostar:1519527667379077120>",
+                description=desc,
+                color=EMBED_COLOR
+            )
+            sessions_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+            await button_interaction.response.send_message(embed=sessions_embed, ephemeral=True)
+
+    await interaction.followup.send(embed=profile_embed, view=SessionsView(), ephemeral=True)
 
 
 @bot.tree.command(name="say", description="Send a message as the bot.")
