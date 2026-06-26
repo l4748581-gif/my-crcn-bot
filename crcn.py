@@ -11,9 +11,10 @@ CIVILIAN_ROLE = 1503604680121647214
 GROUP_REQUIRED_ROLE = 1512965724329742487
 
 intents = discord.Intents.all()
-bot = commands.Bot(command_prefix="!", intents=intents)
+bot = commands.Bot(command_prefix="?", intents=intents)
 
 startup_messages = {}
+release_times = {}
 
 bot_status = {
     "lockdown": False,
@@ -22,7 +23,7 @@ bot_status = {
 
 
 async def check_bot_status(interaction: discord.Interaction) -> bool:
-    if not interaction.command or interaction.command.name == "update":
+    if not interaction.command or interaction.command.name in ("update", "say", "dm", "conclude"):
         return True
     if bot_status["lockdown"]:
         error_embed = discord.Embed(
@@ -49,6 +50,36 @@ async def check_bot_status(interaction: discord.Interaction) -> bool:
 async def on_ready():
     await bot.tree.sync()
     print(f"Logged in as {bot.user}")
+
+
+@bot.event
+async def on_message(message: discord.Message):
+    if message.author.bot:
+        return
+
+    if "banned" in message.content.lower():
+        banned_embed = discord.Embed(
+            title="**__<:yellow_bell:1519436277907193976>  Banned From a Session? <:yellow_bell:1519436277907193976>__**",
+            description=(
+                "<:yellow_arrow:1519436248920490305> If you were banned from a Session, you'll need to fill out a **Ban Appeal**. "
+                "The ban appeal is in the button below. If you were not banned, kindly disregard this message."
+            ),
+            color=EMBED_COLOR
+        )
+        banned_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+
+        class BanAppealView(discord.ui.View):
+            def __init__(self):
+                super().__init__(timeout=None)
+                self.add_item(discord.ui.Button(
+                    label="Ban Appeal Link",
+                    style=discord.ButtonStyle.link,
+                    url="https://docs.google.com/forms/d/e/1FAIpQLSdxRa3lO57ssTE5qgX912UxMAJVQm2uXGUThJoECSOa4c86CA/viewform?usp=sharing&ouid=114820152348130489079"
+                ))
+
+        await message.channel.send(embed=banned_embed, view=BanAppealView())
+
+    await bot.process_commands(message)
 
 
 @bot.tree.command(name="startup", description="Start a Roleplay Session!")
@@ -216,6 +247,7 @@ async def release(
         release_embed.set_image(url="https://cdn.discordapp.com/attachments/1513671644818706472/1519545971183194163/12_20260624_223249_0011.png?ex=6a3e9bb7&is=6a3d4a37&hm=02ca764c966e246176a3c4fb988c5dfd0e8591331a9c25950bf1d0feecc1c0c9&")
 
         startup_msg = startup_messages[interaction.channel.id]
+        release_times[interaction.channel.id] = discord.utils.utcnow()
 
         class SessionLinkButton(discord.ui.View):
             def __init__(self):
@@ -271,100 +303,123 @@ async def release(
         await interaction.followup.send(embed=denied_embed, ephemeral=True)
 
 
-@bot.tree.command(name="update", description="Manage bot lockdown and revamp mode.")
-async def update(interaction: discord.Interaction):
-    if not interaction.user.guild_permissions.administrator:
+@bot.tree.command(name="conclude", description="Conclude a Roleplay Session!")
+@app_commands.describe(notes="Any notes for the session (optional)")
+async def conclude(interaction: discord.Interaction, notes: str = None):
+    await interaction.response.defer(ephemeral=True)
+
+    if not any(role.id == STAFF_ROLE for role in interaction.user.roles):
         error_embed = discord.Embed(
             description="You do not have permission to use this command.",
             color=EMBED_COLOR
         )
         error_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
-        await interaction.response.send_message(embed=error_embed, ephemeral=True)
+        await interaction.followup.send(embed=error_embed, ephemeral=True)
         return
 
-    class UpdateView(discord.ui.View):
-        def __init__(self):
-            super().__init__(timeout=None)
-            self.update_buttons()
-
-        def update_buttons(self):
-            self.clear_items()
-
-            lockdown_label = "Disable Lockdown" if bot_status["lockdown"] else "Enable Lockdown"
-            lockdown_style = discord.ButtonStyle.danger if bot_status["lockdown"] else discord.ButtonStyle.secondary
-            lockdown_btn = discord.ui.Button(label=lockdown_label, style=lockdown_style)
-            lockdown_btn.callback = self.lockdown_callback
-            self.add_item(lockdown_btn)
-
-            revamp_label = "Disable Revamp Mode" if bot_status["revamp"] else "Enable Revamp Mode"
-            revamp_style = discord.ButtonStyle.danger if bot_status["revamp"] else discord.ButtonStyle.secondary
-            revamp_btn = discord.ui.Button(label=revamp_label, style=revamp_style)
-            revamp_btn.callback = self.revamp_callback
-            self.add_item(revamp_btn)
-
-        async def lockdown_callback(self, button_interaction: discord.Interaction):
-            if bot_status["lockdown"]:
-                bot_status["lockdown"] = False
-                desc = "<:yellow_bell:1519436277907193976> Lockdown Disabled."
-            else:
-                bot_status["lockdown"] = True
-                bot_status["revamp"] = False
-                desc = "<:yellow_bell:1519436277907193976> Lockdown Enabled."
-
-            self.update_buttons()
-            status_embed = discord.Embed(description=desc, color=EMBED_COLOR)
-            status_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
-            await button_interaction.response.edit_message(embed=status_embed, view=self)
-
-        async def revamp_callback(self, button_interaction: discord.Interaction):
-            if bot_status["revamp"]:
-                bot_status["revamp"] = False
-                desc = "<:yellow_bell:1519436277907193976> Revamp Mode Disabled."
-            else:
-                bot_status["revamp"] = True
-                bot_status["lockdown"] = False
-                desc = "<:yellow_bell:1519436277907193976> Revamp Mode Enabled."
-
-            self.update_buttons()
-            status_embed = discord.Embed(description=desc, color=EMBED_COLOR)
-            status_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
-            await button_interaction.response.edit_message(embed=status_embed, view=self)
-
-    initial_embed = discord.Embed(
-        description="Use the buttons below to manage bot status.",
-        color=EMBED_COLOR
-    )
-    initial_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
-    await interaction.response.send_message(embed=initial_embed, view=UpdateView(), ephemeral=True)
-
-@bot.event
-async def on_message(message: discord.Message):
-    if message.author.bot:
+    if interaction.channel.id not in release_times:
+        error_embed = discord.Embed(
+            description="A release must be sent in this channel before concluding.",
+            color=EMBED_COLOR
+        )
+        error_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+        await interaction.followup.send(embed=error_embed, ephemeral=True)
         return
 
-    if "banned" in message.content.lower():
-        banned_embed = discord.Embed(
-            title="**__<:yellow_bell:1519436277907193976>  Banned From a Session? <:yellow_bell:1519436277907193976>__**",
+    try:
+        start_time = release_times[interaction.channel.id]
+        end_time = discord.utils.utcnow()
+        start_str = discord.utils.format_dt(start_time, style="t")
+        end_str = discord.utils.format_dt(end_time, style="t")
+        notes_str = notes if notes else "No notes provided."
+        host = interaction.user
+
+        conclude_embed = discord.Embed(
+            title="<:yellow_triostar:1519527667379077120> Nation, **__Conclusion__** <:yellow_triostar:1519527667379077120>",
             description=(
-                "<:yellow_arrow:1519436248920490305> If you were banned from a Session, you'll need to fill out a **Ban Appeal**. "
-                "The ban appeal is in the button below. If you were not banned, kindly disregard this message."
+                f"<:yellow_dot:1519436473823269065> {interaction.user.mention} has now **ended their session.** We hope to see you in more of our sessions! "
+                f"Need to make a member report? Open a report ticket in <#1513290644683231454> providing proof. "
+                f"We appreciate any feedback you leave by clicking the **button __below__**!\n\n"
+                f"<:yellow_form:1519436591829881026> | Conclusion Information\n"
+                f"<:yellow_arrow:1519436248920490305> Session Start Time: {start_str}\n"
+                f"<:yellow_arrow:1519436248920490305> Session End Time: {end_str}\n"
+                f"<:yellow_arrow:1519436248920490305> Notes: {notes_str}\n\n"
+                f"**<:crcn:1515960103097077801> - __Session Cooldown of 15 minutes is now in effect.__**"
             ),
             color=EMBED_COLOR
         )
-        banned_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+        conclude_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+        conclude_embed.set_image(url="https://cdn.discordapp.com/attachments/1513671644818706472/1519545972886212658/14_20260624_223249_0013.png?ex=6a3f4477&is=6a3df2f7&hm=6749fb22b31efc39bde3f5d6c2c27c2f0abeb5592eb92c6e6dcee11239059c91&")
 
-        class BanAppealView(discord.ui.View):
+        class FeedbackModal(discord.ui.Modal, title="Session Feedback"):
+            rating = discord.ui.TextInput(
+                label="Rate the session (1-5)",
+                placeholder="Enter a number from 1 to 5",
+                max_length=1
+            )
+            review = discord.ui.TextInput(
+                label="How was the session?",
+                style=discord.TextStyle.paragraph,
+                placeholder="Share your thoughts...",
+                max_length=1000
+            )
+
+            def __init__(self, host: discord.Member):
+                super().__init__()
+                self.host = host
+
+            async def on_submit(self, modal_interaction: discord.Interaction):
+                log_channel = bot.get_channel(1511675078528602213)
+                if log_channel:
+                    log_embed = discord.Embed(
+                        description=(
+                            f"**Submitted By:** {modal_interaction.user.mention}\n"
+                            f"**Host:** {self.host.mention}\n"
+                            f"**Rating:** {self.rating.value}\n"
+                            f"**Review:** {self.review.value}\n"
+                            f"-----------"
+                        ),
+                        color=EMBED_COLOR
+                    )
+                    log_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+                    await log_channel.send(embed=log_embed)
+
+                confirm_embed = discord.Embed(
+                    description="Thank you for your feedback!",
+                    color=EMBED_COLOR
+                )
+                confirm_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+                await modal_interaction.response.send_message(embed=confirm_embed, ephemeral=True)
+
+        class FeedbackView(discord.ui.View):
             def __init__(self):
                 super().__init__(timeout=None)
-                self.add_item(discord.ui.Button(
-                    label="Ban Appeal Link",
-                    style=discord.ButtonStyle.link,
-                    url="https://docs.google.com/forms/d/e/1FAIpQLSdxRa3lO57ssTE5qgX912UxMAJVQm2uXGUThJoECSOa4c86CA/viewform?usp=sharing&ouid=114820152348130489079"
-                ))
 
-        await message.channel.send(embed=banned_embed, view=BanAppealView())
+            @discord.ui.button(label="Leave Feedback", style=discord.ButtonStyle.secondary)
+            async def feedback_button(self, button_interaction: discord.Interaction, button: discord.ui.Button):
+                await button_interaction.response.send_modal(FeedbackModal(host=host))
 
-    await bot.process_commands(message)
+        await interaction.channel.send(embed=conclude_embed, view=FeedbackView())
+
+        release_times.pop(interaction.channel.id, None)
+        startup_messages.pop(interaction.channel.id, None)
+
+        success_embed = discord.Embed(
+            description="Command was processed successfully.",
+            color=EMBED_COLOR
+        )
+        success_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+        await interaction.followup.send(embed=success_embed, ephemeral=True)
+
+    except Exception as e:
+        print(f"[conclude error] {e}")
+        denied_embed = discord.Embed(
+            description="Command was denied.",
+            color=EMBED_COLOR
+        )
+        denied_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+        await interaction.followup.send(embed=denied_embed, ephemeral=True)
+
 
 @bot.tree.command(name="say", description="Send a message as the bot.")
 @app_commands.describe(
@@ -535,6 +590,73 @@ async def dm_prefix(ctx: commands.Context, target: str, *, message: str):
             )
             denied_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
             await ctx.send(embed=denied_embed)
+
+
+@bot.tree.command(name="update", description="Manage bot lockdown and revamp mode.")
+async def update(interaction: discord.Interaction):
+    if not interaction.user.guild_permissions.administrator:
+        error_embed = discord.Embed(
+            description="You do not have permission to use this command.",
+            color=EMBED_COLOR
+        )
+        error_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+        await interaction.response.send_message(embed=error_embed, ephemeral=True)
+        return
+
+    class UpdateView(discord.ui.View):
+        def __init__(self):
+            super().__init__(timeout=None)
+            self.update_buttons()
+
+        def update_buttons(self):
+            self.clear_items()
+
+            lockdown_label = "Disable Lockdown" if bot_status["lockdown"] else "Enable Lockdown"
+            lockdown_style = discord.ButtonStyle.danger if bot_status["lockdown"] else discord.ButtonStyle.secondary
+            lockdown_btn = discord.ui.Button(label=lockdown_label, style=lockdown_style)
+            lockdown_btn.callback = self.lockdown_callback
+            self.add_item(lockdown_btn)
+
+            revamp_label = "Disable Revamp Mode" if bot_status["revamp"] else "Enable Revamp Mode"
+            revamp_style = discord.ButtonStyle.danger if bot_status["revamp"] else discord.ButtonStyle.secondary
+            revamp_btn = discord.ui.Button(label=revamp_label, style=revamp_style)
+            revamp_btn.callback = self.revamp_callback
+            self.add_item(revamp_btn)
+
+        async def lockdown_callback(self, button_interaction: discord.Interaction):
+            if bot_status["lockdown"]:
+                bot_status["lockdown"] = False
+                desc = "<:yellow_bell:1519436277907193976> Lockdown Disabled."
+            else:
+                bot_status["lockdown"] = True
+                bot_status["revamp"] = False
+                desc = "<:yellow_bell:1519436277907193976> Lockdown Enabled."
+
+            self.update_buttons()
+            status_embed = discord.Embed(description=desc, color=EMBED_COLOR)
+            status_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+            await button_interaction.response.edit_message(embed=status_embed, view=self)
+
+        async def revamp_callback(self, button_interaction: discord.Interaction):
+            if bot_status["revamp"]:
+                bot_status["revamp"] = False
+                desc = "<:yellow_bell:1519436277907193976> Revamp Mode Disabled."
+            else:
+                bot_status["revamp"] = True
+                bot_status["lockdown"] = False
+                desc = "<:yellow_bell:1519436277907193976> Revamp Mode Enabled."
+
+            self.update_buttons()
+            status_embed = discord.Embed(description=desc, color=EMBED_COLOR)
+            status_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+            await button_interaction.response.edit_message(embed=status_embed, view=self)
+
+    initial_embed = discord.Embed(
+        description="Use the buttons below to manage bot status.",
+        color=EMBED_COLOR
+    )
+    initial_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+    await interaction.response.send_message(embed=initial_embed, view=UpdateView(), ephemeral=True)
 
 
 bot.run(os.environ["DISCORD_TOKEN"])
