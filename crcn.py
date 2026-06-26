@@ -141,7 +141,7 @@ async def startup(interaction: discord.Interaction, reactions: int):
 @bot.tree.command(name="release", description="Release a Roleplay Session!")
 @app_commands.describe(
     session_link="The Roblox session link",
-    failrp="Fail-RP Limit",
+    failrp="Fail Roleplay Speeds",
     peacetime="Peacetime Status",
     emergency_services="Emergency Services Status"
 )
@@ -202,22 +202,18 @@ async def release(
 
     try:
         release_embed = discord.Embed(
-            title="<a:green_butterflies2:1515944559551451208> Cees Rensselaer County Nation — Roleplay Released <a:green_butterflies2:1515944559551451208>",
+            title="<:yellow_triostar:1519527667379077120> Nation, **__Release__** <:yellow_triostar:1519527667379077120>",
             description=(
-                f"<:green_arrow2:1515944486453383219> **{interaction.user.mention} has released their session!** Before leaving the spawn area, please follow all directions provided by the host and any co-hosts. "
-                f"Additionally, all Cees Rensselaer County Nation rules and regulations remain in effect for the duration of the session.\n\n"
-                f"<:green_arrow2:1515944486453383219> Session links will be refreshed a few minutes after release, so be sure to join promptly. "
-                f"Re-invites will be distributed every fifteen minutes, so there is no need to request a link from the hosting team.\n\n"
-                f"**Session Information:**\n"
-                f"<:green_arrow:1515944469986410648> Fail-Roleplay Limit: **{failrp}**\n"
-                f"<:green_arrow:1515944469986410648> Peacetime Status: **{peacetime}**\n"
-                f"<:green_arrow:1515944469986410648> Emergency Services: **{emergency_services}**\n\n"
-                f"__<:green_bell:1515944524474486935> Any unauthorized distribution of the session link will result in an immediate ban from the server.__"
+                f"<:yellow_dot:1519436473823269065> {interaction.user.mention} has **released their session!** Prior to leaving the dealership, ensure all of your vehicles are registered in the bot input channel, if your vehicles are not registered, you could get cited by Law Enforcement. Read all the information below to get a better understanding of the Session.\n\n"
+                f"<:yellow_form:1519436591829881026> | Session Information\n"
+                f"<:yellow_arrow:1519436248920490305> Fail Roleplay Speeds: **{failrp}**\n"
+                f"<:yellow_arrow:1519436248920490305> Peacetime Status: **{peacetime}**\n"
+                f"<:yellow_arrow:1519436248920490305> Emergency Services: **{emergency_services}**"
             ),
             color=EMBED_COLOR
         )
         release_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
-        release_embed.set_image(url="https://cdn.discordapp.com/attachments/1500685322122694892/1516169155835854969/Copy_of_Information_20260615_145449_0000.png?ex=6a31aa0f&is=6a30588f&hm=754dd69507b9dd668b259065af4a28c00e00fe80a1787a581d1d9494d93759bd")
+        release_embed.set_image(url="https://cdn.discordapp.com/attachments/1513671644818706472/1519545971183194163/12_20260624_223249_0011.png?ex=6a3e9bb7&is=6a3d4a37&hm=02ca764c966e246176a3c4fb988c5dfd0e8591331a9c25950bf1d0feecc1c0c9&")
 
         startup_msg = startup_messages[interaction.channel.id]
 
@@ -227,16 +223,6 @@ async def release(
 
             @discord.ui.button(label="Session Link", style=discord.ButtonStyle.secondary)
             async def session_link_button(self, button_interaction: discord.Interaction, button: discord.ui.Button):
-                if any(role.id == GROUP_REQUIRED_ROLE for role in button_interaction.user.roles):
-                    group_embed = discord.Embed(
-                        title="Group Entrance Required!",
-                        description="You must join the [ROBLOX Group](https://www.roblox.com/share/g/871056823) then submit a group request within #group-entrance.",
-                        color=EMBED_COLOR
-                    )
-                    group_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
-                    await button_interaction.response.send_message(embed=group_embed, ephemeral=True)
-                    return
-
                 reacted = False
                 startup_msg_fresh = await button_interaction.channel.fetch_message(startup_msg.id)
                 for r in startup_msg_fresh.reactions:
