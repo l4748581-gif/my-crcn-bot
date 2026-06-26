@@ -366,5 +366,175 @@ async def on_message(message: discord.Message):
 
     await bot.process_commands(message)
 
+@bot.tree.command(name="say", description="Send a message as the bot.")
+@app_commands.describe(
+    message="The message to send",
+    reply_to="The message ID to reply to (optional)"
+)
+async def say(interaction: discord.Interaction, message: str, reply_to: str = None):
+    await interaction.response.defer(ephemeral=True)
+
+    if not interaction.user.guild_permissions.administrator:
+        error_embed = discord.Embed(
+            description="You do not have permission to use this command.",
+            color=EMBED_COLOR
+        )
+        error_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+        await interaction.followup.send(embed=error_embed, ephemeral=True)
+        return
+
+    try:
+        if reply_to:
+            try:
+                reply_msg = await interaction.channel.fetch_message(int(reply_to))
+                await reply_msg.reply(message)
+            except Exception:
+                await interaction.channel.send(message)
+        else:
+            await interaction.channel.send(message)
+
+        success_embed = discord.Embed(
+            description="Command was processed successfully.",
+            color=EMBED_COLOR
+        )
+        success_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+        await interaction.followup.send(embed=success_embed, ephemeral=True)
+
+    except Exception:
+        denied_embed = discord.Embed(
+            description="Command was denied.",
+            color=EMBED_COLOR
+        )
+        denied_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+        await interaction.followup.send(embed=denied_embed, ephemeral=True)
+
+
+@bot.tree.command(name="dm", description="DM a user or everyone in the server.")
+@app_commands.describe(
+    message="The message to send",
+    user="The user to DM (leave empty to DM everyone)"
+)
+async def dm(interaction: discord.Interaction, message: str, user: discord.Member = None):
+    await interaction.response.defer(ephemeral=True)
+
+    if not interaction.user.guild_permissions.administrator:
+        error_embed = discord.Embed(
+            description="You do not have permission to use this command.",
+            color=EMBED_COLOR
+        )
+        error_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+        await interaction.followup.send(embed=error_embed, ephemeral=True)
+        return
+
+    try:
+        dm_embed = discord.Embed(
+            title=f"<:yellow_arrow:1519436248920490305> DM Sent By **{interaction.user.display_name}**",
+            description=f"Message: **{message}**",
+            color=EMBED_COLOR
+        )
+        dm_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+
+        if user:
+            try:
+                await user.send(embed=dm_embed)
+                success_embed = discord.Embed(
+                    description="Command was processed successfully.",
+                    color=EMBED_COLOR
+                )
+                success_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+                await interaction.followup.send(embed=success_embed, ephemeral=True)
+            except Exception:
+                denied_embed = discord.Embed(
+                    description=f"Could not DM {user.mention}.",
+                    color=EMBED_COLOR
+                )
+                denied_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+                await interaction.followup.send(embed=denied_embed, ephemeral=True)
+        else:
+            failed = []
+            for member in interaction.guild.members:
+                if member.bot:
+                    continue
+                try:
+                    await member.send(embed=dm_embed)
+                except Exception:
+                    failed.append(member.mention)
+
+            result = "Command was processed successfully."
+            if failed:
+                result += f"\n\nCould not DM: {', '.join(failed)}"
+
+            result_embed = discord.Embed(
+                description=result,
+                color=EMBED_COLOR
+            )
+            result_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+            await interaction.channel.send(embed=result_embed)
+
+    except Exception:
+        denied_embed = discord.Embed(
+            description="Command was denied.",
+            color=EMBED_COLOR
+        )
+        denied_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+        await interaction.followup.send(embed=denied_embed, ephemeral=True)
+
+
+@bot.command(name="dm")
+async def dm_prefix(ctx: commands.Context, target: str, *, message: str):
+    if not ctx.author.guild_permissions.administrator:
+        error_embed = discord.Embed(
+            description="You do not have permission to use this command.",
+            color=EMBED_COLOR
+        )
+        error_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+        await ctx.send(embed=error_embed)
+        return
+
+    dm_embed = discord.Embed(
+        title=f"<:yellow_arrow:1519436248920490305> DM Sent By **{ctx.author.display_name}**",
+        description=f"Message: **{message}**",
+        color=EMBED_COLOR
+    )
+    dm_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+
+    if target.lower() == "everyone":
+        failed = []
+        for member in ctx.guild.members:
+            if member.bot:
+                continue
+            try:
+                await member.send(embed=dm_embed)
+            except Exception:
+                failed.append(member.mention)
+
+        result = "Command was processed successfully."
+        if failed:
+            result += f"\n\nCould not DM: {', '.join(failed)}"
+
+        result_embed = discord.Embed(
+            description=result,
+            color=EMBED_COLOR
+        )
+        result_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+        await ctx.send(embed=result_embed)
+    else:
+        try:
+            member = await commands.MemberConverter().convert(ctx, target)
+            await member.send(embed=dm_embed)
+            success_embed = discord.Embed(
+                description="Command was processed successfully.",
+                color=EMBED_COLOR
+            )
+            success_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+            await ctx.send(embed=success_embed)
+        except Exception:
+            denied_embed = discord.Embed(
+                description=f"Could not DM {target}.",
+                color=EMBED_COLOR
+            )
+            denied_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+            await ctx.send(embed=denied_embed)
+
 
 bot.run(os.environ["DISCORD_TOKEN"])
