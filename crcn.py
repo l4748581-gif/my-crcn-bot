@@ -1,4 +1,5 @@
 import os
+import asyncio
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -9,15 +10,18 @@ FOOTER_ICON = "https://cdn.discordapp.com/icons/1497481852678832158/100d02016a6c
 STAFF_ROLE = 1503903256076877945
 CIVILIAN_ROLE = 1503604680121647214
 GROUP_REQUIRED_ROLE = 1512965724329742487
+HR_ROLE = 1503612022393405520
 FEEDBACK_LOG_CHANNEL = 1511675078528602213
 SESSION_LOG_CHANNEL = 1511679397848027207
+CONCLUDE_IMAGE = "https://cdn.discordapp.com/attachments/1513671644818706472/1519545972886212658/14_20260624_223249_0013.png?ex=6a3f4477&is=6a3df2f7&hm=6749fb22b31efc39bde3f5d6c2c27c2f0abeb5592eb92c6e6dcee11239059c91&"
 
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix="?", intents=intents)
 
 startup_messages = {}
 release_times = {}
-session_logs = {}  # {user_id: [{"start": datetime, "end": datetime, "duration": str}]}
+regen_times = {}
+session_logs = {}
 
 bot_status = {
     "lockdown": False,
@@ -26,7 +30,7 @@ bot_status = {
 
 
 async def check_bot_status(interaction: discord.Interaction) -> bool:
-    if not interaction.command or interaction.command.name in ("update", "say", "dm", "conclude", "staffprofile"):
+    if not interaction.command or interaction.command.name in ("update", "say", "dm", "conclude", "staffprofile", "cancel", "forceend"):
         return True
     if bot_status["lockdown"]:
         error_embed = discord.Embed(
@@ -47,6 +51,23 @@ async def check_bot_status(interaction: discord.Interaction) -> bool:
         await interaction.followup.send(embed=error_embed, ephemeral=True)
         return False
     return True
+
+
+async def send_termination_embed(channel: discord.TextChannel, description: str):
+    embed = discord.Embed(
+        title="<:yellow_triostar:1519527667379077120> Nation, **__Conclusion__** <:yellow_triostar:1519527667379077120>",
+        description=description,
+        color=EMBED_COLOR
+    )
+    embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+    embed.set_image(url=CONCLUDE_IMAGE)
+    await channel.send(embed=embed)
+
+
+def cleanup_channel(channel_id: int):
+    startup_messages.pop(channel_id, None)
+    release_times.pop(channel_id, None)
+    regen_times.pop(channel_id, None)
 
 
 @bot.event
@@ -83,6 +104,29 @@ async def on_message(message: discord.Message):
         await message.channel.send(embed=banned_embed, view=BanAppealView())
 
     await bot.process_commands(message)
+
+
+@bot.event
+async def on_raw_message_delete(payload: discord.RawMessageDeleteEvent):
+    channel_id = payload.channel_id
+    if channel_id not in startup_messages:
+        return
+
+    startup_msg = startup_messages[channel_id]
+    if payload.message_id != startup_msg.id:
+        return
+
+    if channel_id in release_times:
+        return
+
+    channel = bot.get_channel(channel_id)
+    if channel:
+        await send_termination_embed(
+            channel,
+            "This session has been **Terminated** automatically by the bot.\nReason: **Startup Message was Deleted.**"
+        )
+
+    cleanup_channel(channel_id)
 
 
 @bot.tree.command(name="startup", description="Start a Roleplay Session!")
@@ -149,6 +193,11 @@ async def startup(interaction: discord.Interaction, reactions: int):
             else:
                 continue
             break
+
+        try:
+            await interaction.user.send("Hey, you have reached the __required__ reactions for your session, and it is now recommended to release whenever you are ready!")
+        except Exception:
+            pass
 
         setup_embed = discord.Embed(
             title="<:yellow_triostar:1519527667379077120> Nation, **__Session Setup__** <:yellow_triostar:1519527667379077120>",
@@ -299,8 +348,76 @@ async def release(
         success_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
         await interaction.followup.send(embed=success_embed, ephemeral=True)
 
+        host = interaction.user
+        channel_id = interaction.channel.id
+
+        async def regen_reminder():
+            await asyncio.sleep(600)
+            if channel_id in release_times and channel_id not in regen_times:
+                try:
+                    await host.send("Hey, it seems like your session link has been open for 10 minutes and its now recommended to regenerate it. If you have already regenerated it, please disregard this message and run /regen.")
+                except Exception:
+                    pass
+
+        asyncio.create_task(regen_reminder())
+
     except Exception as e:
         print(f"[release error] {e}")
+        denied_embed = discord.Embed(
+            description="Command was denied.",
+            color=EMBED_COLOR
+        )
+        denied_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+        await interaction.followup.send(embed=denied_embed, ephemeral=True)
+
+
+@bot.tree.command(name="regen", description="Regenerate the session link.")
+async def regen(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)
+
+    if not await check_bot_status(interaction):
+        return
+
+    if not any(role.id == STAFF_ROLE for role in interaction.user.roles):
+        error_embed = discord.Embed(
+            description="You do not have permission to use this command.",
+            color=EMBED_COLOR
+        )
+        error_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+        await interaction.followup.send(embed=error_embed, ephemeral=True)
+        return
+
+    if interaction.channel.id not in release_times:
+        error_embed = discord.Embed(
+            description="A release must be sent in this channel before regenerating.",
+            color=EMBED_COLOR
+        )
+        error_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+        await interaction.followup.send(embed=error_embed, ephemeral=True)
+        return
+
+    try:
+        regen_times[interaction.channel.id] = discord.utils.utcnow()
+
+        regen_embed = discord.Embed(
+            title="<:yellow_triostar:1519527667379077120> Nation, **__Link Refreshed__** <:yellow_triostar:1519527667379077120>",
+            description=(
+                "<:yellow_dot:1519436473823269065> The current session link has been regenerated. At this time, we ask you __not__ to ping the host for re-invites and that you wait patiently for re-invites to commence."
+            ),
+            color=EMBED_COLOR
+        )
+        regen_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+
+        await interaction.channel.send(embed=regen_embed)
+
+        success_embed = discord.Embed(
+            description="Command was processed successfully.",
+            color=EMBED_COLOR
+        )
+        success_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+        await interaction.followup.send(embed=success_embed, ephemeral=True)
+
+    except Exception:
         denied_embed = discord.Embed(
             description="Command was denied.",
             color=EMBED_COLOR
@@ -359,7 +476,7 @@ async def conclude(interaction: discord.Interaction, notes: str = None):
             color=EMBED_COLOR
         )
         conclude_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
-        conclude_embed.set_image(url="https://cdn.discordapp.com/attachments/1513671644818706472/1519545972886212658/14_20260624_223249_0013.png?ex=6a3f4477&is=6a3df2f7&hm=6749fb22b31efc39bde3f5d6c2c27c2f0abeb5592eb92c6e6dcee11239059c91&")
+        conclude_embed.set_image(url=CONCLUDE_IMAGE)
 
         host_id = host.id
         if host_id not in session_logs:
@@ -435,8 +552,7 @@ async def conclude(interaction: discord.Interaction, notes: str = None):
 
         await interaction.channel.send(embed=conclude_embed, view=FeedbackView())
 
-        release_times.pop(interaction.channel.id, None)
-        startup_messages.pop(interaction.channel.id, None)
+        cleanup_channel(interaction.channel.id)
 
         success_embed = discord.Embed(
             description="Command was processed successfully.",
@@ -447,6 +563,116 @@ async def conclude(interaction: discord.Interaction, notes: str = None):
 
     except Exception as e:
         print(f"[conclude error] {e}")
+        denied_embed = discord.Embed(
+            description="Command was denied.",
+            color=EMBED_COLOR
+        )
+        denied_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+        await interaction.followup.send(embed=denied_embed, ephemeral=True)
+
+
+@bot.tree.command(name="cancel", description="Cancel a Roleplay Session!")
+@app_commands.describe(reason="The reason for canceling the session")
+async def cancel(interaction: discord.Interaction, reason: str):
+    await interaction.response.defer(ephemeral=True)
+
+    if not any(role.id == STAFF_ROLE for role in interaction.user.roles):
+        error_embed = discord.Embed(
+            description="You do not have permission to use this command.",
+            color=EMBED_COLOR
+        )
+        error_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+        await interaction.followup.send(embed=error_embed, ephemeral=True)
+        return
+
+    if interaction.channel.id not in startup_messages:
+        error_embed = discord.Embed(
+            description="There is no active session in this channel to cancel.",
+            color=EMBED_COLOR
+        )
+        error_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+        await interaction.followup.send(embed=error_embed, ephemeral=True)
+        return
+
+    try:
+        cancel_embed = discord.Embed(
+            title="<:yellow_triostar:1519527667379077120> Nation, **__Conclusion__** <:yellow_triostar:1519527667379077120>",
+            description=(
+                f"This session has been **Canceled** by {interaction.user.mention}.\n"
+                f"Reason: **{reason}**"
+            ),
+            color=EMBED_COLOR
+        )
+        cancel_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+        cancel_embed.set_image(url=CONCLUDE_IMAGE)
+
+        await interaction.channel.send(embed=cancel_embed)
+
+        cleanup_channel(interaction.channel.id)
+
+        success_embed = discord.Embed(
+            description="Command was processed successfully.",
+            color=EMBED_COLOR
+        )
+        success_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+        await interaction.followup.send(embed=success_embed, ephemeral=True)
+
+    except Exception:
+        denied_embed = discord.Embed(
+            description="Command was denied.",
+            color=EMBED_COLOR
+        )
+        denied_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+        await interaction.followup.send(embed=denied_embed, ephemeral=True)
+
+
+@bot.tree.command(name="forceend", description="Force end a Roleplay Session!")
+@app_commands.describe(reason="The reason for force ending the session")
+async def forceend(interaction: discord.Interaction, reason: str):
+    await interaction.response.defer(ephemeral=True)
+
+    if not any(role.id == HR_ROLE for role in interaction.user.roles):
+        error_embed = discord.Embed(
+            description="You do not have permission to use this command.",
+            color=EMBED_COLOR
+        )
+        error_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+        await interaction.followup.send(embed=error_embed, ephemeral=True)
+        return
+
+    if interaction.channel.id not in startup_messages:
+        error_embed = discord.Embed(
+            description="There is no active session in this channel to force end.",
+            color=EMBED_COLOR
+        )
+        error_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+        await interaction.followup.send(embed=error_embed, ephemeral=True)
+        return
+
+    try:
+        forceend_embed = discord.Embed(
+            title="<:yellow_triostar:1519527667379077120> Nation, **__Conclusion__** <:yellow_triostar:1519527667379077120>",
+            description=(
+                f"This session has been **Force Ended** by the HR ({interaction.user.mention}).\n"
+                f"Reason: **{reason}**"
+            ),
+            color=EMBED_COLOR
+        )
+        forceend_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+        forceend_embed.set_image(url=CONCLUDE_IMAGE)
+
+        await interaction.channel.send(embed=forceend_embed)
+
+        cleanup_channel(interaction.channel.id)
+
+        success_embed = discord.Embed(
+            description="Command was processed successfully.",
+            color=EMBED_COLOR
+        )
+        success_embed.set_footer(text=FOOTER_TEXT, icon_url=FOOTER_ICON)
+        await interaction.followup.send(embed=success_embed, ephemeral=True)
+
+    except Exception:
         denied_embed = discord.Embed(
             description="Command was denied.",
             color=EMBED_COLOR
